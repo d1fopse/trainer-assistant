@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 import { analyticsApi, type Analytics } from '../api';
 import { useNav } from '../nav';
 import { ZONE, fmt, fromIso } from '../time';
-import { Loading, LoadError, Screen, Section, Segmented, formatUah, useLoad } from '../ui';
+import { Loading, LoadError, Ring, Screen, Section, Segmented, formatUah, useLoad } from '../ui';
 
 type Period = 'month' | 'prev' | 'quarter' | 'year';
 let lastPeriod: Period = 'month';
@@ -53,23 +53,49 @@ export function AnalyticsScreen() {
             {fmt(fromIso(`${data.period.from}T12:00`), lang, 'd MMM yyyy')} – {fmt(fromIso(`${data.period.to}T12:00`), lang, 'd MMM yyyy')}
           </p>
 
+          <div className="card hero">
+            <Ring value={(data.attendance.rate ?? 0) / 100} size={140} stroke={11} label={t('analytics.attendance')}>
+              <span className="ring-value">{pctText(data.attendance.rate)}</span>
+              <span className="ring-caption">{t('analytics.attendance')}</span>
+            </Ring>
+            <div className="hero-side">
+              <div className="hero-stat mint">
+                <b>{data.attendance.attended}</b>
+                <span>{t('analytics.cameCount', { count: data.attendance.attended })}</span>
+              </div>
+              <div className="hero-stat coral">
+                <b>{data.attendance.noShows}</b>
+                <span>{t('analytics.noShowCount', { count: data.attendance.noShows })}</span>
+              </div>
+              <div className="hero-stat violet">
+                <b>{data.attendance.cancelled}</b>
+                <span>{t('analytics.cancelledCount', { count: data.attendance.cancelled })}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="kpis">
-            <Kpi label={t('analytics.income')} value={uah(data.income.total)} sub={t('analytics.payments', { count: data.income.payments })} />
             <Kpi
+              tone="coral"
+              label={t('analytics.income')}
+              value={uah(data.income.total)}
+              sub={t('analytics.payments', { count: data.income.payments })}
+              spark={data.income.byMonth.slice(-6).map((m) => m.total)}
+            />
+            <Kpi
+              tone="sky"
               label={t('analytics.load')}
               value={pctText(data.load.rate)}
               sub={t('analytics.seats', { booked: data.load.booked, seats: data.load.seats })}
+              spark={data.load.byWeekday.map((d) => (d.seats ? d.booked / d.seats : 0))}
             />
             <Kpi
-              label={t('analytics.attendance')}
-              value={pctText(data.attendance.rate)}
-              sub={t('analytics.attendedOf', { attended: data.attendance.attended, noShows: data.attendance.noShows })}
-            />
-            <Kpi
+              tone="violet"
               label={t('analytics.trialConversion')}
               value={pctText(data.trials.rate)}
               sub={t('analytics.trialsOf', { converted: data.trials.converted, total: data.trials.attended })}
             />
+            <Kpi tone="mint" label={t('analytics.newClientsShort')} value={String(data.newClients)} sub={t('analytics.forPeriod')} />
           </div>
 
           {(data.attendance.unmarked > 0 || data.unpaidVisits > 0) && (
@@ -182,20 +208,46 @@ export function AnalyticsScreen() {
             </Section>
           )}
 
-          <p className="muted small center-text">{t('analytics.newClients', { count: data.newClients })}</p>
         </>
       )}
     </Screen>
   );
 }
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Kpi({
+  label,
+  value,
+  sub,
+  tone,
+  spark,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: 'coral' | 'sky' | 'mint' | 'violet';
+  spark?: number[];
+}) {
   return (
-    <div className="kpi card">
+    <div className={`kpi card ${tone}`}>
       <span className="kpi-label">{label}</span>
       <span className="kpi-value">{value}</span>
       <span className="muted small">{sub}</span>
+      {spark && spark.some((v) => v > 0) && <Spark values={spark} />}
     </div>
+  );
+}
+
+/** Міні-лінія тренду (як пульс у референсі). */
+function Spark({ values }: { values: number[] }) {
+  const W = 120;
+  const H = 22;
+  const max = Math.max(...values, 1);
+  const step = W / Math.max(values.length - 1, 1);
+  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(H - 2 - (v / max) * (H - 4)).toFixed(1)}`).join(' ');
+  return (
+    <svg className="kpi-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 
@@ -216,29 +268,48 @@ export function BarChart({
   const H = 140;
   const top = 18;
   const bottom = 20;
+  const pad = 14; // поля, щоб підписи крайніх стовпчиків не обрізались
   const top_ = Math.max(max ?? 0, ...data.map((d) => d.value), 1);
-  const bw = W / data.length;
+  const bw = (W - pad * 2) / data.length;
   const best = data.reduce((i, d, j) => (d.value > data[i]!.value ? j : i), 0);
+  const gid = `cf${useId().replace(/:/g, '')}`;
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#6EA8FF" />
+          <stop offset="1" stopColor="#5CE5C2" />
+        </linearGradient>
+      </defs>
       <line x1="0" x2={W} y1={H - bottom} y2={H - bottom} className="chart-axis" />
       {data.map((d, i) => {
         const h = ((H - top - bottom) * d.value) / top_;
-        const x = i * bw + bw * 0.18;
+        const x = pad + i * bw + bw * 0.18;
         const y = H - bottom - h;
         const showValue = data.length <= 7 || i === best || i === data.length - 1;
         return (
           <g key={i}>
             <title>{`${d.label}: ${format(d.value)}${d.note ? ` (${d.note})` : ''}`}</title>
-            <rect x={x} y={y} width={bw * 0.64} height={Math.max(h, d.value ? 2 : 0)} rx="3" className={highlightLast && i === data.length - 1 ? 'chart-bar current' : 'chart-bar'} />
+            <rect
+              x={x}
+              y={y}
+              width={bw * 0.64}
+              height={Math.max(h, d.value ? 2 : 0)}
+              rx="4"
+              className={(highlightLast && i === data.length - 1) || (!highlightLast && i === best && d.value > 0) ? 'chart-bar hot' : 'chart-bar'}
+              fill={`url(#${gid})`}
+            />
             {showValue && d.value > 0 && (
               <text x={x + bw * 0.32} y={y - 4} textAnchor="middle" className="chart-value">
                 {format(d.value)}
               </text>
             )}
-            <text x={x + bw * 0.32} y={H - 6} textAnchor="middle" className="chart-label">
-              {d.label}
-            </text>
+            {/* При 12 стовпчиках підписуємо кожен другий (останній — завжди), щоб підписи не злипались. */}
+            {(data.length <= 7 || (data.length - 1 - i) % 2 === 0) && (
+              <text x={x + bw * 0.32} y={H - 6} textAnchor="middle" className="chart-label">
+                {d.label}
+              </text>
+            )}
           </g>
         );
       })}

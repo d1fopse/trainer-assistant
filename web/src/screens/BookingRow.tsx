@@ -45,7 +45,7 @@ export function BookingRow({
         <button className="link-button" onClick={onOpenClient}>
           {b.name}
         </button>
-        {b.isTrial && <span className="tag">{t('calendar.trial')}</span>}
+        {b.isTrial && <span className="tag trial">{t('calendar.trial')}</span>}
         <span className="spacer" />
         {b.status !== 'BOOKED' && <span className={`status-chip ${st.tone}`}>{st.text}</span>}
       </div>

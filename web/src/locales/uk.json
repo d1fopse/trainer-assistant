@@ -199,7 +199,21 @@
       "Пт",
       "Сб",
       "Нд"
-    ]
+    ],
+    "dayLoad": "Завантаження дня",
+    "seatsBooked": "місць зайнято",
+    "slotsCount_one": "слот",
+    "slotsCount_few": "слоти",
+    "slotsCount_many": "слотів",
+    "slotsCount_other": "слоти",
+    "freeSlots_one": "вільний",
+    "freeSlots_few": "вільні",
+    "freeSlots_many": "вільних",
+    "freeSlots_other": "вільні",
+    "groupsCount_one": "група",
+    "groupsCount_few": "групи",
+    "groupsCount_many": "груп",
+    "groupsCount_other": "групи"
   },
   "slot": {
     "new": "Новий слот",
@@ -366,7 +380,8 @@
       "passUpdate": "Абонемент змінено: {{before}} → {{after}}",
       "passDelete": "Видалено абонемент на {{count}} занять"
     },
-    "moreUpcoming": "…і ще {{count}}"
+    "moreUpcoming": "…і ще {{count}}",
+    "noUpcomingShort": "записів немає"
   },
   "waitlist": {
     "join": "Повідомити, якщо звільниться місце",
@@ -430,6 +445,20 @@
     "newClients_one": "Нових клієнтів за період: {{count}}",
     "newClients_few": "Нових клієнтів за період: {{count}}",
     "newClients_many": "Нових клієнтів за період: {{count}}",
-    "newClients_other": "Нових клієнтів за період: {{count}}"
+    "newClients_other": "Нових клієнтів за період: {{count}}",
+    "cameCount_one": "відвідування",
+    "cameCount_few": "відвідування",
+    "cameCount_many": "відвідувань",
+    "cameCount_other": "відвідування",
+    "noShowCount_one": "неявка",
+    "noShowCount_few": "неявки",
+    "noShowCount_many": "неявок",
+    "noShowCount_other": "неявки",
+    "cancelledCount_one": "скасування",
+    "cancelledCount_few": "скасування",
+    "cancelledCount_many": "скасувань",
+    "cancelledCount_other": "скасування",
+    "newClientsShort": "Нові клієнти",
+    "forPeriod": "за період"
   }
 }

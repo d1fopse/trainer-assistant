@@ -5,7 +5,7 @@ import { moneyApi, type AuditEntry, type ClientHistory } from '../api';
 import { useNav } from '../nav';
 import { haptic } from '../telegram';
 import { fmt, fromIso, isoDate, now, timeRange } from '../time';
-import { Loading, LoadError, Section, formatUah, useLoad } from '../ui';
+import { Loading, LoadError, Ring, Section, formatUah, useLoad } from '../ui';
 import { bookingStatusText } from './BookingRow';
 
 const VISITS_SHOWN = 10;
@@ -30,6 +30,7 @@ export function ClientMoney({ clientId }: { clientId: number }) {
   const visits = data.visits.filter((v) => !upcoming.includes(v));
   const shown = allVisits ? visits : visits.slice(0, VISITS_SHOWN);
   const low = summary.activePasses.length > 0 && summary.remaining <= 1;
+  const activeTotal = summary.activePasses.reduce((n, p) => n + p.totalSessions, 0);
 
   async function applyUnpaid() {
     setBusy(true);
@@ -47,7 +48,9 @@ export function ClientMoney({ clientId }: { clientId: number }) {
     <>
       <Section title={t('money.pass')}>
         <div className="remaining">
-          <span className={`remaining-num${low ? ' warn-text' : ''}`}>{summary.remaining}</span>
+          <Ring value={activeTotal ? summary.remaining / activeTotal : 0} size={96} stroke={8} tone={low ? 'amber' : 'flow'} label={t('money.pass')}>
+            <span className="ring-value remaining-num">{summary.remaining}</span>
+          </Ring>
           <span className="muted">{t('money.sessionsLeft', { count: summary.remaining })}</span>
         </div>
         {low && <p className="warn-text small">{t('money.lowPass')}</p>}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, type ClientStatus } from '../api';
 import { useNav } from '../nav';
+import { Icon } from '../icons';
 import { Loading, LoadError, Screen, Segmented, useLoad } from '../ui';
 
 // Фільтр і пошук запам'ятовуються, поки відкритий додаток (повернення з картки не скидає їх).
@@ -78,8 +79,8 @@ export function Clients() {
                   {c.remaining}
                 </span>
               )}
-              <span className="chevron" aria-hidden>
-                ›
+              <span className="chevron">
+                <Icon name="chevronRight" size={18} />
               </span>
             </button>
           ))}

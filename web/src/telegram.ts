@@ -12,6 +12,9 @@ type TelegramWebApp = {
     offClick(cb: () => void): void;
   };
   HapticFeedback?: { notificationOccurred(type: 'success' | 'error' | 'warning'): void };
+  setHeaderColor?(color: string): void;
+  setBackgroundColor?(color: string): void;
+  setBottomBarColor?(color: string): void;
 };
 
 declare global {
@@ -26,6 +29,14 @@ const webApp = window.Telegram?.WebApp;
 export function initTelegram() {
   webApp?.ready();
   webApp?.expand();
+  // Інтерфейс завжди темний — підфарбовуємо шапку й фон Telegram під нього.
+  try {
+    webApp?.setHeaderColor?.('#0D141D');
+    webApp?.setBackgroundColor?.('#0D141D');
+    webApp?.setBottomBarColor?.('#0D141D');
+  } catch {
+    /* старі версії Telegram */
+  }
 }
 
 /**

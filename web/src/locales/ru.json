@@ -199,7 +199,21 @@
       "Пт",
       "Сб",
       "Вс"
-    ]
+    ],
+    "dayLoad": "Загрузка дня",
+    "seatsBooked": "мест занято",
+    "slotsCount_one": "слот",
+    "slotsCount_few": "слота",
+    "slotsCount_many": "слотов",
+    "slotsCount_other": "слота",
+    "freeSlots_one": "свободный",
+    "freeSlots_few": "свободных",
+    "freeSlots_many": "свободных",
+    "freeSlots_other": "свободных",
+    "groupsCount_one": "группа",
+    "groupsCount_few": "группы",
+    "groupsCount_many": "групп",
+    "groupsCount_other": "группы"
   },
   "slot": {
     "new": "Новый слот",
@@ -366,7 +380,8 @@
       "passUpdate": "Абонемент изменён: {{before}} → {{after}}",
       "passDelete": "Удалён абонемент на {{count}} занятий"
     },
-    "moreUpcoming": "…и ещё {{count}}"
+    "moreUpcoming": "…и ещё {{count}}",
+    "noUpcomingShort": "записей нет"
   },
   "waitlist": {
     "join": "Сообщить, если освободится место",
@@ -430,6 +445,20 @@
     "newClients_one": "Новых клиентов за период: {{count}}",
     "newClients_few": "Новых клиентов за период: {{count}}",
     "newClients_many": "Новых клиентов за период: {{count}}",
-    "newClients_other": "Новых клиентов за период: {{count}}"
+    "newClients_other": "Новых клиентов за период: {{count}}",
+    "cameCount_one": "посещение",
+    "cameCount_few": "посещения",
+    "cameCount_many": "посещений",
+    "cameCount_other": "посещения",
+    "noShowCount_one": "неявка",
+    "noShowCount_few": "неявки",
+    "noShowCount_many": "неявок",
+    "noShowCount_other": "неявки",
+    "cancelledCount_one": "отмена",
+    "cancelledCount_few": "отмены",
+    "cancelledCount_many": "отмен",
+    "cancelledCount_other": "отмены",
+    "newClientsShort": "Новые клиенты",
+    "forPeriod": "за период"
   }
 }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Lang, Me } from '../api';
 import { NavContext, type Nav, type Route, type Tab } from '../nav';
 import { bindBackButton } from '../telegram';
+import { Icon } from '../icons';
 import { Calendar } from './Calendar';
 import { AnalyticsScreen } from './Analytics';
 import { Clients } from './Clients';
@@ -17,7 +18,7 @@ import { SlotForm } from './SlotForm';
 import { SeriesForm } from './SeriesForm';
 import { PassForm, PaymentForm, VisitForm } from './PaymentForm';
 
-const TAB_ICONS: Record<Tab, string> = { calendar: '📅', clients: '👥', analytics: '📊', prices: '₴', profile: '👤' };
+
 
 export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t } = useTranslation();
@@ -71,8 +72,8 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
       <nav className="tabbar">
         {tabs.map((tb) => (
           <button key={tb} className={tb === tab ? 'active' : ''} onClick={() => selectTab(tb)}>
-            <span className="tab-icon" aria-hidden>
-              {TAB_ICONS[tb]}
+            <span className="tab-icon">
+              <Icon name={tb} />
             </span>
             {t(`tabs.${tb}`)}
           </button>
@@ -91,6 +92,7 @@ function renderRoute(route: Route, me: Me, onLanguage: (l: Lang) => void) {
           isTrainer={isTrainer}
           canWaitlist={me.user.role === 'CLIENT'}
           awaitingApproval={me.user.role === 'GUEST' && me.client !== null}
+          showMyPass={!isTrainer && me.client !== null}
           trainerUsername={me.trainerUsername}
         />
       );

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { moneyApi, waitlistApi, type BotSettings, type Lang, type Me } from '../api';
 import { haptic } from '../telegram';
 import { fmt, fromIso, timeRange } from '../time';
-import { InfoRow, Loading, Screen, Section, useLoad } from '../ui';
+import { InfoRow, Loading, Ring, Screen, Section, useLoad } from '../ui';
 
 export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t, i18n } = useTranslation();
@@ -41,13 +41,22 @@ function MyTrainings() {
   const { data } = useLoad(() => moneyApi.mySummary(), []);
   if (!data) return <Loading />;
   const s = data.summary;
+  const total = s ? s.activePasses.reduce((n, p) => n + p.totalSessions, 0) : 0;
 
   return (
     <>
       {s && (
         <Section title={t('money.pass')}>
           <div className="remaining">
-            <span className={`remaining-num${s.activePasses.length > 0 && s.remaining <= 1 ? ' warn-text' : ''}`}>{s.remaining}</span>
+            <Ring
+              value={total ? s.remaining / total : 0}
+              size={120}
+              stroke={9}
+              tone={total && s.remaining <= 1 ? 'amber' : 'flow'}
+              label={t('money.pass')}
+            >
+              <span className="ring-value remaining-num">{s.remaining}</span>
+            </Ring>
             <span className="muted">{t('money.sessionsLeft', { count: s.remaining })}</span>
           </div>
           {s.activePasses.length === 0 && <p className="muted small">{t('money.noActivePassClient')}</p>}

@@ -1,20 +1,28 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DateTime } from 'luxon';
-import { calendarApi, waitlistApi, type PublicSlot, type TrainerSlot } from '../api';
+import { calendarApi, moneyApi, waitlistApi, type PublicSlot, type TrainerSlot } from '../api';
+import { Icon } from '../icons';
 import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic, openChat } from '../telegram';
 import { fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
-import { Loading, LoadError, Screen, useLoad } from '../ui';
+import { Loading, LoadError, Ring, Screen, useLoad } from '../ui';
 
 // Обраний тиждень і день зберігаються, поки відкритий додаток.
 let lastWeek: DateTime | null = null;
 let lastDay: string | null = null;
 
-type Props = { isTrainer: boolean; canWaitlist: boolean; awaitingApproval?: boolean; trainerUsername: string | null };
+type Props = {
+  isTrainer: boolean;
+  canWaitlist: boolean;
+  awaitingApproval?: boolean;
+  /** Показати кільце абонемента (у клієнта є картка). */
+  showMyPass?: boolean;
+  trainerUsername: string | null;
+};
 
-export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUsername }: Props) {
+export function Calendar({ isTrainer, canWaitlist, awaitingApproval, showMyPass, trainerUsername }: Props) {
   const { t, i18n } = useTranslation();
   const nav = useNav();
   const lang = i18n.language;
@@ -87,16 +95,17 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
       }
     >
       {awaitingApproval && <p className="card notice">{t('home.guestWaiting')}</p>}
+      {showMyPass && <MyPassHero />}
 
       <div className="week-nav">
         <button className="icon-button" aria-label={t('calendar.prevWeek')} onClick={() => shiftWeek(-1)}>
-          ‹
+          <Icon name="chevronLeft" size={18} />
         </button>
         <button className="link-button week-label" onClick={goToday}>
           {fmt(days[0]!, lang, 'd MMM')} – {fmt(days[6]!, lang, 'd MMM')}
         </button>
         <button className="icon-button" aria-label={t('calendar.nextWeek')} onClick={() => shiftWeek(1)}>
-          ›
+          <Icon name="chevronRight" size={18} />
         </button>
       </div>
 
@@ -118,7 +127,11 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
         })}
       </div>
 
-      <h2 className="day-title">{fmt(selected, lang, 'cccc, d MMMM')}</h2>
+      {isTrainer && data ? (
+        <DayHero title={fmt(selected, lang, 'cccc, d MMMM')} slots={daySlots as TrainerSlot[]} />
+      ) : (
+        <h2 className="day-title">{fmt(selected, lang, 'cccc, d MMMM')}</h2>
+      )}
 
       {failed ? (
         <LoadError onRetry={reload} />
@@ -165,10 +178,14 @@ function TrainerSlotCard({ slot, onOpen }: { slot: TrainerSlot; onOpen: () => vo
   const { t } = useTranslation();
   const free = slot.capacity - slot.bookedCount;
   return (
-    <button className={`card slot-card${slot.bookedCount === 0 ? ' free' : ''}`} onClick={onOpen}>
+    <button className={`card slot-card${slot.bookedCount === 0 ? ' free' : slot.type === 'GROUP' ? ' group' : ''}`} onClick={onOpen}>
       <div className="slot-time">
         <span>{timeRange(slot.startsAt, slot.durationMin)}</span>
-        {slot.seriesId && <span className="muted small" title={t('calendar.series')}>↻</span>}
+        {slot.seriesId && (
+          <span className="series-icon" title={t('calendar.series')}>
+            <Icon name="repeat" size={14} />
+          </span>
+        )}
       </div>
       <div className="slot-main">
         <span className="muted small">
@@ -183,7 +200,7 @@ function TrainerSlotCard({ slot, onOpen }: { slot: TrainerSlot; onOpen: () => vo
             {slot.bookings.map((b) => (
               <span key={b.id}>
                 {b.name}
-                {b.isTrial && <span className="tag">{t('calendar.trial')}</span>}
+                {b.isTrial && <span className="tag trial">{t('calendar.trial')}</span>}
               </span>
             ))}
           </span>
@@ -193,8 +210,8 @@ function TrainerSlotCard({ slot, onOpen }: { slot: TrainerSlot; onOpen: () => vo
         )}
         {slot.note && <span className="muted small">{slot.note}</span>}
       </div>
-      <span className="chevron" aria-hidden>
-        ›
+      <span className="chevron">
+        <Icon name="chevronRight" size={18} />
       </span>
     </button>
   );
@@ -265,9 +282,84 @@ function PublicSlotCard({
           disabled={busy}
           onClick={() => void toggleBell()}
         >
-          🔔
+          <Icon name="bell" size={20} />
         </button>
       )}
+    </div>
+  );
+}
+
+/** Кільце завантаження дня для тренера: зайняті місця з усіх. */
+function DayHero({ title, slots }: { title: string; slots: TrainerSlot[] }) {
+  const { t } = useTranslation();
+  const seats = slots.reduce((n, s) => n + s.capacity, 0);
+  const booked = slots.reduce((n, s) => n + s.bookedCount, 0);
+  const free = slots.filter((s) => s.bookedCount === 0).length;
+  const groups = slots.filter((s) => s.type === 'GROUP').length;
+  return (
+    <div className="card hero">
+      <Ring value={seats ? booked / seats : 0} size={132} stroke={10} label={t('calendar.dayLoad')}>
+        <span className="ring-value">
+          {booked}
+          <small>/{seats}</small>
+        </span>
+        <span className="ring-caption">{t('calendar.seatsBooked')}</span>
+      </Ring>
+      <div className="hero-side">
+        <h2 className="day-title">{title}</h2>
+        <div className="day-stats">
+          <div className="hero-stat sky">
+            <b>{slots.length}</b>
+            <span>{t('calendar.slotsCount', { count: slots.length })}</span>
+          </div>
+          <div className="hero-stat mint">
+            <b>{free}</b>
+            <span>{t('calendar.freeSlots', { count: free })}</span>
+          </div>
+          <div className="hero-stat violet">
+            <b>{groups}</b>
+            <span>{t('calendar.groupsCount', { count: groups })}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Кільце абонемента клієнта + найближче заняття. */
+function MyPassHero() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const { data } = useLoad(() => moneyApi.mySummary(), []);
+  if (!data?.summary) return null;
+  const total = data.summary.activePasses.reduce((n, p) => n + p.totalSessions, 0);
+  const left = data.summary.remaining;
+  const next = data.upcoming[0];
+  return (
+    <div className="card hero">
+      <Ring value={total ? left / total : 0} size={132} stroke={10} tone={total && left <= 1 ? 'amber' : 'flow'} label={t('money.pass')}>
+        <span className="ring-value">
+          {left}
+          {total > 0 && <small>/{total}</small>}
+        </span>
+        <span className="ring-caption">{t('money.sessionsLeft', { count: left })}</span>
+      </Ring>
+      <div className="hero-side">
+        <div className="hero-stat sky">
+          <span>{t('money.upcoming')}</span>
+          {next ? (
+            <b>
+              {fmt(fromIso(next.startsAt), lang, 'ccc d MMM')}, {fromIso(next.startsAt).toFormat('HH:mm')}
+            </b>
+          ) : (
+            <span className="muted">{t('money.noUpcomingShort')}</span>
+          )}
+        </div>
+        <div className="hero-stat mint">
+          <span>{t('money.myHistory')}</span>
+          <b>{data.summary.attended}</b>
+        </div>
+      </div>
     </div>
   );
 }
