@@ -4,7 +4,7 @@ import { demoApi, moneyApi, waitlistApi, type BotSettings, type Lang, type Me } 
 import { Icon } from '../icons';
 import { confirmAction, haptic, openChat } from '../telegram';
 import { fmt, formatDuration, fromIso, now, timeRange } from '../time';
-import { Chip, Ev, Loading, PassLine, Screen, Section, Segmented, StreamNow, Switch, useLoad, type Tone } from '../ui';
+import { Chip, Ev, Loading, PassLine, Screen, Section, Segmented, StreamNow, Switch, TimedNotice, useLoad, type Tone } from '../ui';
 
 export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t, i18n } = useTranslation();
@@ -66,7 +66,7 @@ export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => v
 
   return (
     <Screen title={t('home.greeting', { name })} subtitle={fmt(now(), i18n.language, 'cccc, d MMMM')}>
-      {role === 'GUEST' && <p className="card notice">{t('home.guestWaiting')}</p>}
+      {role === 'GUEST' && <TimedNotice id="guestWaiting">{t('home.guestWaiting')}</TimedNotice>}
       {me.client && role === 'CLIENT' && <ClientHome />}
       {me.trainerUsername && role === 'CLIENT' && (
         <button onClick={() => openChat(me.trainerUsername!)}>{t('home.writeTrainer')}</button>

@@ -2200,3 +2200,43 @@ button.ev:active:not(:disabled) {
   margin-top: 6px;
   align-self: flex-start;
 }
+
+/* Повідомлення з таймером: смужка спливає за час показу, потім плитка згасає. */
+.timed-notice {
+  overflow: hidden;
+  padding-bottom: 16px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.timed-notice.leaving {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.timed-notice .timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--yellow);
+  transform-origin: left center;
+  animation: notice-timer linear forwards;
+}
+
+@keyframes notice-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timed-notice,
+  .timed-notice .timer {
+    transition: none;
+    animation: none;
+  }
+}

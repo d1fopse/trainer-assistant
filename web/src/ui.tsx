@@ -311,3 +311,33 @@ export function formatDate(iso: string, lang: string) {
 }
 
 export const PHONE_RE = /^(\+?[0-9 ()-]{7,20})?$/;
+
+// Повідомлення, які вже показали в цьому запуску застосунку (після перезавантаження — знову).
+const shownNotices = new Set<string>();
+
+/**
+ * Повідомлення, що зникає саме через `ms` мілісекунд, зі смужкою-таймером.
+ * У межах одного запуску показується один раз (перехід між вкладками його не повертає),
+ * після перезавантаження сторінки — знову.
+ */
+export function TimedNotice({ id, ms = 10000, children }: { id: string; ms?: number; children: ReactNode }) {
+  const [visible, setVisible] = useState(() => !shownNotices.has(id));
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    if (!visible) return;
+    shownNotices.add(id);
+    const fade = setTimeout(() => setLeaving(true), ms);
+    const hide = setTimeout(() => setVisible(false), ms + 300);
+    return () => {
+      clearTimeout(fade);
+      clearTimeout(hide);
+    };
+  }, [id, ms, visible]);
+  if (!visible) return null;
+  return (
+    <div className={`card notice timed-notice${leaving ? ' leaving' : ''}`} role="status">
+      <p className="note">{children}</p>
+      <span className="timer" aria-hidden style={{ animationDuration: `${ms}ms` }} />
+    </div>
+  );
+}

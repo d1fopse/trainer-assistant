@@ -7,7 +7,7 @@ import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic, openChat } from '../telegram';
 import { fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
-import { Loading, LoadError, Screen, Stat, useLoad } from '../ui';
+import { Loading, LoadError, Screen, Stat, TimedNotice, useLoad } from '../ui';
 import { DayScale, Seats, type ScaleItem } from './DayScale';
 
 // Обраний тиждень і день зберігаються, поки відкритий додаток.
@@ -114,7 +114,7 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
         )
       }
     >
-      {awaitingApproval && <p className="card notice">{t('home.guestWaiting')}</p>}
+      {awaitingApproval && <TimedNotice id="guestWaiting">{t('home.guestWaiting')}</TimedNotice>}
 
       <div className="week-nav">
         <button className="icon-button sm" aria-label={t('calendar.prevWeek')} onClick={() => shiftWeek(-1)}>
