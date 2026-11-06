@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError, type Lang, type Me } from './api';
 import { getAuthHeader } from './telegram';
-import { Home } from './screens/Home';
+import { Shell } from './screens/Shell';
 import { Onboarding } from './screens/Onboarding';
 
 type State =
@@ -59,7 +59,7 @@ export function App() {
       return state.me.needsOnboarding ? (
         <Onboarding onDone={() => void load()} />
       ) : (
-        <Home me={state.me} onLanguage={(l) => void changeLanguage(l)} />
+        <Shell me={state.me} onLanguage={(l) => void changeLanguage(l)} />
       );
   }
 }

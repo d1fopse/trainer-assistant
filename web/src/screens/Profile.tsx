@@ -1,17 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import type { Lang, Me } from '../api';
+import { InfoRow, Screen, Section } from '../ui';
 
-export function Home({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
+export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t, i18n } = useTranslation();
   const name = me.client?.name ?? me.user.firstName ?? '';
   const role = me.user.role;
 
   return (
-    <div className="screen">
-      <h1>{t('home.greeting', { name })}</h1>
-      <p>
-        <span className="badge">{t(`role.${role}`)}</span>
-      </p>
+    <Screen title={t('home.greeting', { name })}>
+      <Section>
+        <InfoRow label={t('profile.role')}>
+          <span className="badge">{t(`role.${role}`)}</span>
+        </InfoRow>
+      </Section>
 
       {role === 'GUEST' && <p className="muted">{t('home.guestWaiting')}</p>}
       {role === 'TRAINER' && <p className="muted">{t('home.trainerHint')}</p>}
@@ -23,6 +25,6 @@ export function Home({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void
           <option value="ru">Русский</option>
         </select>
       </label>
-    </div>
+    </Screen>
   );
 }
