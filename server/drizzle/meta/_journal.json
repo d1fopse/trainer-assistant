@@ -15,6 +15,13 @@
       "when": 1793975057480,
       "tag": "0001_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793975619941,
+      "tag": "0002_money",
+      "breakpoints": true
     }
   ]
 }

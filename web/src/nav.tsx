@@ -13,7 +13,10 @@ export type Route =
   | { name: 'client'; id: number }
   | { name: 'clientForm'; id?: number }
   | { name: 'pickClient'; mode: 'guestFor' | 'manualFor'; clientId: number; clientName: string }
-  | { name: 'priceForm'; id?: number };
+  | { name: 'priceForm'; id?: number }
+  | { name: 'paymentForm'; clientId: number; id?: number }
+  | { name: 'passForm'; clientId: number; id?: number }
+  | { name: 'visitForm'; clientId: number };
 
 export type Nav = {
   push(route: Route): void;

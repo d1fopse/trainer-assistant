@@ -18,8 +18,8 @@ import {
 } from '../time.js';
 import { idParam } from './validation.js';
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
-type Q = Db | Tx;
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Q = Db | Tx;
 
 const isoDateTime = z.string().datetime({ offset: true }).transform((s) => new Date(s));
 const localDate = z.string().refine(isValidDate, 'invalid date');
@@ -51,7 +51,6 @@ const slotPatch = z
   .strict();
 
 const bookingCreate = z.object({ clientId: z.number().int().positive(), isTrial: z.boolean().default(false) });
-const bookingPatch = z.object({ status: z.literal('CANCELLED') }).strict();
 
 const seriesFields = {
   weekdays: z
@@ -90,7 +89,7 @@ async function findOverlaps(q: Q, start: Date, durationMin: number, excludeId?: 
     .where(and(...conds));
 }
 
-async function assertNoOverlap(q: Q, start: Date, durationMin: number, force: boolean, excludeId?: number) {
+export async function assertNoOverlap(q: Q, start: Date, durationMin: number, force: boolean, excludeId?: number) {
   if (force) return;
   const overlaps = await findOverlaps(q, start, durationMin, excludeId);
   if (overlaps.length > 0) throw new HttpError(409, 'overlap', { overlaps });
@@ -130,7 +129,7 @@ export async function addBooking(tx: Tx, slot: Slot, clientId: number, isTrial: 
   return b!;
 }
 
-async function lockSlot(tx: Tx, id: number) {
+export async function lockSlot(tx: Tx, id: number) {
   const [slot] = await tx.select().from(slots).where(eq(slots.id, id)).for('update');
   if (!slot) throw new HttpError(404, 'not_found');
   return slot;
@@ -148,6 +147,8 @@ async function loadTrainerSlots(q: Q, where: SQL | undefined) {
       name: clients.name,
       status: bookings.status,
       isTrial: bookings.isTrial,
+      deducted: bookings.deducted,
+      passId: bookings.passId,
     })
     .from(bookings)
     .innerJoin(clients, eq(clients.id, bookings.clientId))
@@ -159,7 +160,7 @@ async function loadTrainerSlots(q: Q, where: SQL | undefined) {
   });
 }
 
-async function loadTrainerSlot(q: Q, id: number) {
+export async function loadTrainerSlot(q: Q, id: number) {
   const [s] = await loadTrainerSlots(q, eq(slots.id, id));
   if (!s) throw new HttpError(404, 'not_found');
   return s;
@@ -324,20 +325,6 @@ export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: Cale
     });
     await hooks.onBooked?.(id, b.clientId);
     return reply.code(201).send({ slot: await loadTrainerSlot(db, id) });
-  });
-
-  /** Етап 3: лише скасування запису (відмітки відвідування — етап 4). */
-  app.patch('/api/bookings/:id', trainerOnly, async (req) => {
-    const { id } = parse(idParam, req.params, 'invalid_id');
-    parse(bookingPatch, req.body);
-    const [b] = await db
-      .update(bookings)
-      .set({ status: 'CANCELLED' })
-      .where(and(eq(bookings.id, id), eq(bookings.status, 'BOOKED')))
-      .returning();
-    if (!b) throw new HttpError(409, 'not_cancellable');
-    await hooks.onSeatsFreed?.(b.slotId);
-    return { slot: await loadTrainerSlot(db, b.slotId) };
   });
 
   app.post('/api/series', trainerOnly, async (req, reply) => {

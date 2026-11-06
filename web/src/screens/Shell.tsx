@@ -14,6 +14,7 @@ import { Profile } from './Profile';
 import { SlotScreen } from './SlotScreen';
 import { SlotForm } from './SlotForm';
 import { SeriesForm } from './SeriesForm';
+import { PassForm, PaymentForm, VisitForm } from './PaymentForm';
 
 const TAB_ICONS: Record<Tab, string> = { calendar: '📅', clients: '👥', prices: '₴', profile: '👤' };
 
@@ -102,6 +103,12 @@ function renderRoute(route: Route, me: Me, onLanguage: (l: Lang) => void) {
       return <Prices isTrainer={isTrainer} trainerUsername={me.trainerUsername} />;
     case 'priceForm':
       return isTrainer ? <PriceForm id={route.id} /> : null;
+    case 'paymentForm':
+      return isTrainer ? <PaymentForm clientId={route.clientId} id={route.id} /> : null;
+    case 'passForm':
+      return isTrainer ? <PassForm clientId={route.clientId} id={route.id} /> : null;
+    case 'visitForm':
+      return isTrainer ? <VisitForm clientId={route.clientId} /> : null;
     case 'profile':
       return <Profile me={me} onLanguage={onLanguage} />;
   }

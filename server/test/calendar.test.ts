@@ -148,7 +148,8 @@ describe('calendar', () => {
     const res = await call(TRAINER_ID, 'PATCH', `/api/bookings/${bookingId}`, { status: 'CANCELLED' });
     expect(res.json().slot.bookedCount).toBe(0);
     expect((await call(CLIENT_B, 'GET', WEEK)).json().slots[0].freeSeats).toBe(1);
-    expect((await call(TRAINER_ID, 'PATCH', `/api/bookings/${bookingId}`, { status: 'CANCELLED' })).statusCode).toBe(409);
+    // Повторне скасування нічого не ламає.
+    expect((await call(TRAINER_ID, 'PATCH', `/api/bookings/${bookingId}`, { status: 'CANCELLED' })).json().slot.bookedCount).toBe(0);
 
     await call(TRAINER_ID, 'POST', `/api/slots/${s.id}/bookings`, { clientId: boris });
     await call(TRAINER_ID, 'POST', `/api/slots/${s.id}/cancel`);

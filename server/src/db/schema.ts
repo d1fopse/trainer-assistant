@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -123,6 +124,10 @@ export const bookings = pgTable(
       .references(() => clients.id, { onDelete: 'cascade' }),
     status: bookingStatusEnum('status').notNull().default('BOOKED'),
     isTrial: boolean('is_trial').notNull().default(false),
+    /** Чи списано заняття з абонемента (passId — з якого). */
+    deducted: boolean('deducted').notNull().default(false),
+    passId: integer('pass_id').references((): AnyPgColumn => passes.id, { onDelete: 'set null' }),
+    markedAt: timestamp('marked_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -138,9 +143,67 @@ export const bookings = pgTable(
   ],
 );
 
+export const paymentMethodEnum = pgEnum('payment_method', ['CASH', 'CARD', 'TRANSFER']);
+export const paymentPurposeEnum = pgEnum('payment_purpose', ['PASS', 'SINGLE', 'TRIAL', 'OTHER']);
+
+/** Платіж, внесений тренером вручну. */
+export const payments = pgTable(
+  'payments',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id')
+      .notNull()
+      .references(() => clients.id, { onDelete: 'cascade' }),
+    amountUah: integer('amount_uah').notNull(),
+    /** Місцева дата оплати (Київ). */
+    paidAt: date('paid_at').notNull(),
+    method: paymentMethodEnum('method').notNull(),
+    purpose: paymentPurposeEnum('purpose').notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('payments_client_idx').on(t.clientId), index('payments_paid_at_idx').on(t.paidAt)],
+);
+
+/** Абонемент: N занять, залишок зменшується при відмітці «прийшов». */
+export const passes = pgTable(
+  'passes',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id')
+      .notNull()
+      .references(() => clients.id, { onDelete: 'cascade' }),
+    totalSessions: integer('total_sessions').notNull(),
+    remaining: integer('remaining').notNull(),
+    purchasedAt: date('purchased_at').notNull(),
+    expiresAt: date('expires_at'),
+    paymentId: integer('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('passes_client_idx').on(t.clientId)],
+);
+
+/** Журнал змін (відмітки, абонементи, платежі) — щоб було видно, що й коли виправляли. */
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id').references(() => clients.id, { onDelete: 'cascade' }),
+    entity: text('entity').notNull(),
+    entityId: integer('entity_id'),
+    action: text('action').notNull(),
+    details: jsonb('details').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('audit_client_idx').on(t.clientId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Price = typeof prices.$inferSelect;
 export type Slot = typeof slots.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Series = typeof series.$inferSelect;
+export type Pass = typeof passes.$inferSelect;
+export type Payment = typeof payments.$inferSelect;

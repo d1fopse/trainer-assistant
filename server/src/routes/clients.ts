@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { and, asc, eq, ilike, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
-import { bookings, clients, series, users, type Client } from '../db/schema.js';
+import { auditLog, bookings, clients, passes, payments, series, users, type Client } from '../db/schema.js';
 import { requireTrainer } from '../auth.js';
 import { GOALS, LEVELS, idParam, optionalText, phoneSchema } from './validation.js';
 
@@ -41,6 +41,12 @@ const listColumns = {
   createdAt: clients.createdAt,
   username: users.username,
   hasTelegram: sql<boolean>`${clients.userId} is not null`,
+  /** Залишок занять в активних абонементах; null — абонементів немає. */
+  remaining: sql<number | null>`(
+    select sum(p.remaining)::int from passes p
+    where p.client_id = ${clients.id} and p.remaining > 0
+      and (p.expires_at is null or p.expires_at >= (now() at time zone 'Europe/Kyiv')::date)
+  )`,
 };
 
 async function loadCard(db: Db, id: number) {
@@ -98,6 +104,9 @@ async function moveClientData(tx: Tx, fromId: number, toId: number) {
   if (toTrial) await tx.update(bookings).set({ isTrial: false }).where(eq(bookings.clientId, fromId));
   await tx.update(bookings).set({ clientId: toId }).where(eq(bookings.clientId, fromId));
   await tx.update(series).set({ clientId: toId }).where(eq(series.clientId, fromId));
+  await tx.update(passes).set({ clientId: toId }).where(eq(passes.clientId, fromId));
+  await tx.update(payments).set({ clientId: toId }).where(eq(payments.clientId, fromId));
+  await tx.update(auditLog).set({ clientId: toId }).where(eq(auditLog.clientId, fromId));
 }
 
 export function registerClientRoutes(app: FastifyInstance, db: Db) {

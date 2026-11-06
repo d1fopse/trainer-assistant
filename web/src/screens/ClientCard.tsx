@@ -4,6 +4,7 @@ import { api, type ClientStatus } from '../api';
 import { useNav } from '../nav';
 import { confirmAction, haptic, openChat } from '../telegram';
 import { InfoRow, Loading, LoadError, Screen, Section, formatDate, useLoad } from '../ui';
+import { ClientMoney } from './ClientMoney';
 
 export function ClientCardScreen({ id }: { id: number }) {
   const { t, i18n } = useTranslation();
@@ -101,6 +102,8 @@ export function ClientCardScreen({ id }: { id: number }) {
           <p className="muted small">{t('card.mergeIntoExistingHint')}</p>
         </div>
       )}
+
+      <ClientMoney clientId={c.id} />
 
       <Section title={t('card.questionnaire')}>
         <InfoRow label={t('card.goal')}>{c.goal ? t(`onboarding.goals.${c.goal}`) : notSet}</InfoRow>

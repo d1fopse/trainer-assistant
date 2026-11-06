@@ -33,6 +33,7 @@ export type ClientListItem = {
   username: string | null;
   hasTelegram: boolean;
   createdAt: string;
+  remaining: number | null;
 };
 
 export type ClientCard = {
@@ -171,6 +172,8 @@ export type SlotBooking = {
   name: string;
   status: BookingStatus;
   isTrial: boolean;
+  deducted: boolean;
+  passId: number | null;
 };
 
 export type TrainerSlot = {
@@ -255,6 +258,11 @@ export const calendarApi = {
     request<{ slot: TrainerSlot }>(`/api/slots/${slotId}/bookings`, json('POST', { clientId, isTrial })).then((r) => r.slot),
   cancelBooking: (id: number) =>
     request<{ slot: TrainerSlot }>(`/api/bookings/${id}`, json('PATCH', { status: 'CANCELLED' })).then((r) => r.slot),
+  mark: (id: number, status: BookingStatus, deduct?: boolean) =>
+    request<{ slot: TrainerSlot; warning?: string }>(
+      `/api/bookings/${id}`,
+      json('PATCH', deduct === undefined ? { status } : { status, deduct }),
+    ),
   createSeries: (body: SeriesCreate) => request<SeriesResult>('/api/series', json('POST', body)),
   series: (id: number) => request<{ series: SeriesInfo }>(`/api/series/${id}`).then((r) => r.series),
   cancelSeries: (id: number, fromDate: string) =>
@@ -263,4 +271,112 @@ export const calendarApi = {
     request<SeriesResult>(`/api/series/${id}/split`, json('POST', body)),
   copyWeek: (from: string, to: string) =>
     request<{ created: number; skipped: string[] }>('/api/calendar/copy-week', json('POST', { from, to })),
+};
+
+// ---------- Відвідування, абонементи, платежі (етап 4) ----------
+
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER';
+export type PaymentPurpose = 'PASS' | 'SINGLE' | 'TRIAL' | 'OTHER';
+
+export type Pass = {
+  id: number;
+  clientId: number;
+  totalSessions: number;
+  remaining: number;
+  purchasedAt: string;
+  expiresAt: string | null;
+  paymentId: number | null;
+  note: string | null;
+};
+
+export type Payment = {
+  id: number;
+  clientId: number;
+  amountUah: number;
+  paidAt: string;
+  method: PaymentMethod;
+  purpose: PaymentPurpose;
+  note: string | null;
+};
+
+export type Visit = {
+  bookingId: number;
+  slotId: number;
+  startsAt: string;
+  durationMin: number;
+  type: SlotType;
+  slotStatus: 'OPEN' | 'CANCELLED';
+  status: BookingStatus;
+  isTrial: boolean;
+  deducted: boolean;
+  passId: number | null;
+  markedAt: string | null;
+};
+
+export type AuditEntry = {
+  id: number;
+  entity: string;
+  entityId: number | null;
+  action: string;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ClientSummary = {
+  remaining: number;
+  activePasses: Pass[];
+  passes: Pass[];
+  attended: number;
+  noShows: number;
+  unpaid: number;
+  trialStatus: BookingStatus | null;
+};
+
+export type ClientHistory = {
+  summary: ClientSummary;
+  visits: Visit[];
+  payments: Payment[];
+  audit: AuditEntry[];
+};
+
+export type PaymentInput = {
+  amountUah: number;
+  paidAt: string;
+  method: PaymentMethod;
+  purpose: PaymentPurpose;
+  note: string | null;
+};
+
+export type MySummary = {
+  summary: {
+    remaining: number;
+    activePasses: { id: number; totalSessions: number; remaining: number; expiresAt: string | null }[];
+    attended: number;
+  } | null;
+  upcoming: { startsAt: string; durationMin: number; type: SlotType; status: BookingStatus; isTrial: boolean }[];
+  history: { startsAt: string; durationMin: number; type: SlotType; status: BookingStatus; isTrial: boolean }[];
+};
+
+export const moneyApi = {
+  history: (clientId: number) => request<ClientHistory>(`/api/clients/${clientId}/history`),
+  addPayment: (clientId: number, body: PaymentInput & { pass?: { totalSessions: number; expiresAt: string | null } }) =>
+    request<{ payment: Payment; pass: Pass | null; summary: ClientSummary }>(
+      `/api/clients/${clientId}/payments`,
+      json('POST', body),
+    ),
+  updatePayment: (id: number, body: Partial<PaymentInput>) =>
+    request<{ payment: Payment }>(`/api/payments/${id}`, json('PATCH', body)),
+  deletePayment: (id: number) => request<void>(`/api/payments/${id}`, { method: 'DELETE' }),
+  addPass: (clientId: number, body: { totalSessions: number; remaining?: number; expiresAt?: string | null; note?: string | null }) =>
+    request<{ pass: Pass; summary: ClientSummary }>(`/api/clients/${clientId}/passes`, json('POST', body)),
+  updatePass: (id: number, body: Partial<{ totalSessions: number; remaining: number; expiresAt: string | null; note: string | null }>) =>
+    request<{ pass: Pass; summary: ClientSummary }>(`/api/passes/${id}`, json('PATCH', body)),
+  deletePass: (id: number) => request<void>(`/api/passes/${id}`, { method: 'DELETE' }),
+  addVisit: (
+    clientId: number,
+    body: { date: string; time: string; durationMin: number; status: 'ATTENDED' | 'NO_SHOW'; isTrial: boolean; deduct?: boolean },
+  ) => request<{ warning?: string }>(`/api/clients/${clientId}/visits`, json('POST', body)),
+  applyUnpaid: (clientId: number) =>
+    request<{ applied: number; summary: ClientSummary }>(`/api/clients/${clientId}/apply-unpaid`, { method: 'POST' }),
+  mySummary: () => request<MySummary>('/api/me/summary'),
 };

@@ -73,6 +73,11 @@ export function Clients() {
                   {!c.hasTelegram && <span className="tag">{t('clients.noTelegram')}</span>}
                 </span>
               </span>
+              {c.remaining !== null && (
+                <span className={`remaining-badge${c.remaining <= 1 ? ' low' : ''}`} title={t('money.sessionsLeft', { count: c.remaining })}>
+                  {c.remaining}
+                </span>
+              )}
               <span className="chevron" aria-hidden>
                 ›
               </span>

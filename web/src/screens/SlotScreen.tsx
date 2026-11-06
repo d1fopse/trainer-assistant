@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { calendarApi, type TrainerSlot } from '../api';
+import { calendarApi, type BookingStatus, type TrainerSlot } from '../api';
 import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic } from '../telegram';
 import { fmt, formatDuration, fromIso, isoDate, timeRange } from '../time';
 import { InfoRow, Loading, LoadError, Screen, Section, useLoad } from '../ui';
 import { ClientSelect, useClientOptions } from './ClientSelect';
+import { BookingRow } from './BookingRow';
 
 export function SlotScreen({ id }: { id: number }) {
   const { t, i18n } = useTranslation();
@@ -18,6 +19,7 @@ export function SlotScreen({ id }: { id: number }) {
   const [trial, setTrial] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (failed) {
     return (
@@ -57,6 +59,23 @@ export function SlotScreen({ id }: { id: number }) {
     await run(() => calendarApi.addBooking(id, Number(pick), trial));
     setPick('');
     setTrial(false);
+  }
+
+  async function markBooking(bookingId: number, status: BookingStatus, deduct?: boolean) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await calendarApi.mark(bookingId, status, deduct);
+      setData(r.slot);
+      if (r.warning === 'no_active_pass') setNotice(t('mark.noPassWarning'));
+      haptic(r.warning ? 'warning' : 'success');
+    } catch (e) {
+      setError(errorText(e, t));
+      haptic('error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function cancelBooking(bookingId: number, name: string) {
@@ -105,18 +124,14 @@ export function SlotScreen({ id }: { id: number }) {
           <p className="muted note">{t('calendar.free')}</p>
         ) : (
           slot.bookings.map((b) => (
-            <div key={b.id} className="booking-row">
-              <button className="link-button" onClick={() => nav.push({ name: 'client', id: b.clientId })}>
-                {b.name}
-              </button>
-              {b.isTrial && <span className="tag">{t('calendar.trial')}</span>}
-              <span className="spacer" />
-              {b.status === 'BOOKED' && (
-                <button className="small-button danger" disabled={busy} onClick={() => void cancelBooking(b.id, b.name)}>
-                  {t('slot.cancelBooking')}
-                </button>
-              )}
-            </div>
+            <BookingRow
+              key={b.id}
+              b={b}
+              busy={busy}
+              onOpenClient={() => nav.push({ name: 'client', id: b.clientId })}
+              onMark={(status, deduct) => void markBooking(b.id, status, deduct)}
+              onCancel={() => void cancelBooking(b.id, b.name)}
+            />
           ))
         )}
       </Section>
@@ -144,6 +159,7 @@ export function SlotScreen({ id }: { id: number }) {
       )}
 
       {error && <p className="error">{error}</p>}
+      {notice && <p className="warn-text">{notice}</p>}
 
       {slot.seriesId && (
         <div className="stack">

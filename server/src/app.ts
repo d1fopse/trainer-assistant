@@ -8,6 +8,7 @@ import { registerClientRoutes } from './routes/clients.js';
 import { registerPriceRoutes } from './routes/prices.js';
 import { registerCalendarRoutes, type CalendarHooks } from './routes/calendar.js';
 import { registerErrorHandler } from './http.js';
+import { registerMoneyRoutes } from './routes/money.js';
 
 export async function buildApp(config: Config, db: Db, hooks: CalendarHooks = {}) {
   const app = Fastify({ logger: config.nodeEnv !== 'test' });
@@ -28,6 +29,7 @@ export async function buildApp(config: Config, db: Db, hooks: CalendarHooks = {}
     registerClientRoutes(api, db);
     registerPriceRoutes(api, db);
     registerCalendarRoutes(api, db, hooks);
+    registerMoneyRoutes(api, db, hooks);
   });
 
   return app;
