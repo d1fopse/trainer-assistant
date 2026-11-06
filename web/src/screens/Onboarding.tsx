@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { getTelegramFirstName } from '../telegram';
+import { PHONE_RE } from '../ui';
 
 const GOALS = ['weight_loss', 'muscle_gain', 'strength', 'health', 'other'] as const;
 const LEVELS = ['none', 'beginner', 'intermediate', 'advanced'] as const;
 
+/** Анкета першого входу: три кроки на одній вертикальній лінії. */
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
+  const [step, setStep] = useState(0);
   const [name, setName] = useState(getTelegramFirstName());
   const [phone, setPhone] = useState('');
   const [goal, setGoal] = useState<string>(GOALS[0]);
@@ -18,11 +21,16 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const canSubmit = consent && name.trim().length > 0 && !busy;
+  const phoneOk = PHONE_RE.test(phone.trim());
+  const stepOk = [name.trim().length > 0 && phoneOk, true, consent][step]!;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (step < 2) {
+      if (stepOk) setStep(step + 1);
+      return;
+    }
+    if (!consent || busy) return;
     setBusy(true);
     setFailed(false);
     try {
@@ -43,74 +51,107 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     }
   }
 
-  return (
-    <form className="screen" onSubmit={submit}>
-      <h1>{t('onboarding.title')}</h1>
-      <p className="muted">{t('onboarding.subtitle')}</p>
+  const titles = [t('onboarding.stepContacts'), t('onboarding.stepGoal'), t('onboarding.stepConsent')];
+  const summaries = [
+    [name.trim(), phone.trim()].filter(Boolean).join(' · '),
+    `${t(`onboarding.goals.${goal}`)} · ${t(`onboarding.levels.${experience}`)}`,
+    '',
+  ];
 
+  const content: ReactNode[] = [
+    <>
       <label>
         {t('onboarding.name')}
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required />
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required autoFocus />
       </label>
-
       <label>
         {t('onboarding.phone')}
-        <input
-          type="tel"
-          inputMode="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+380…"
-        />
+        <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380…" />
+        {!phoneOk && <span className="error small">{t('errors.phone')}</span>}
       </label>
-
-      <label>
-        {t('onboarding.goal')}
-        <select value={goal} onChange={(e) => setGoal(e.target.value)}>
+    </>,
+    <>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="muted tiny" style={{ fontWeight: 600 }}>
+          {t('onboarding.goal')}
+        </span>
+        <div className="choice-chips" role="radiogroup" aria-label={t('onboarding.goal')}>
           {GOALS.map((g) => (
-            <option key={g} value={g}>
+            <button type="button" key={g} role="radio" aria-checked={goal === g} aria-pressed={goal === g} onClick={() => setGoal(g)}>
               {t(`onboarding.goals.${g}`)}
-            </option>
+            </button>
           ))}
-        </select>
-      </label>
-
-      <label>
-        {t('onboarding.experience')}
-        <select value={experience} onChange={(e) => setExperience(e.target.value)}>
+        </div>
+      </div>
+      <div className="stack" style={{ gap: 6 }}>
+        <span className="muted tiny" style={{ fontWeight: 600 }}>
+          {t('onboarding.experience')}
+        </span>
+        <div className="choice-chips" role="radiogroup" aria-label={t('onboarding.experience')}>
           {LEVELS.map((l) => (
-            <option key={l} value={l}>
+            <button type="button" key={l} role="radio" aria-checked={experience === l} aria-pressed={experience === l} onClick={() => setExperience(l)}>
               {t(`onboarding.levels.${l}`)}
-            </option>
+            </button>
           ))}
-        </select>
-      </label>
-
+        </div>
+      </div>
       <label>
         {t('onboarding.health')}
-        <textarea value={health} onChange={(e) => setHealth(e.target.value)} maxLength={1000} rows={3} />
+        <textarea value={health} onChange={(e) => setHealth(e.target.value)} maxLength={1000} rows={2} />
       </label>
-
-      <label>
+      <label className="injury">
         {t('onboarding.injuries')}
-        <textarea
-          value={injuries}
-          onChange={(e) => setInjuries(e.target.value)}
-          maxLength={1000}
-          rows={3}
-        />
+        <textarea value={injuries} onChange={(e) => setInjuries(e.target.value)} maxLength={1000} rows={2} placeholder={t('onboarding.injuriesPlaceholder')} />
       </label>
-
+    </>,
+    <>
       <label className="check">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>{t('onboarding.consent')}</span>
       </label>
-
       {failed && <p className="error">{t('errors.submit')}</p>}
+    </>,
+  ];
 
-      <button type="submit" disabled={!canSubmit}>
-        {t('onboarding.submit')}
-      </button>
+  return (
+    <form className="screen" onSubmit={submit}>
+      <div className="stack" style={{ gap: 6, padding: '4px 2px 6px' }}>
+        <h1>{t('onboarding.title')}</h1>
+        <p className="muted">{t('onboarding.subtitle')}</p>
+      </div>
+
+      <div className="card" style={{ paddingBottom: 0 }}>
+        {titles.map((title, i) => (
+          <div key={i} className={`step${i < step ? ' done' : i === step ? ' current' : ''}`}>
+            <span className="step-mark" aria-hidden>
+              {i < step ? '✓' : i + 1}
+            </span>
+            <div className="step-body">
+              {i < step ? (
+                <button type="button" className="link-button" style={{ color: 'var(--hint)' }} onClick={() => setStep(i)}>
+                  {summaries[i] || title}
+                </button>
+              ) : (
+                <span className="step-title" aria-current={i === step ? 'step' : undefined}>
+                  {title}
+                </span>
+              )}
+              {i === step && content[i]}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="row" style={{ marginTop: 4 }}>
+        {step > 0 && (
+          <button type="button" className="secondary" style={{ flex: 'none' }} onClick={() => setStep(step - 1)}>
+            {t('common.back')}
+          </button>
+        )}
+        <button type="submit" disabled={!stepOk || busy}>
+          {step < 2 ? t('onboarding.next') : t('onboarding.submit')}
+        </button>
+      </div>
     </form>
   );
 }

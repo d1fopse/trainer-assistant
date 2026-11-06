@@ -353,7 +353,7 @@ export type PaymentInput = {
 export type MySummary = {
   summary: {
     remaining: number;
-    activePasses: { id: number; totalSessions: number; remaining: number; expiresAt: string | null }[];
+    activePasses: { id: number; totalSessions: number; remaining: number; purchasedAt: string; expiresAt: string | null }[];
     attended: number;
   } | null;
   upcoming: { startsAt: string; durationMin: number; type: SlotType; status: BookingStatus; isTrial: boolean }[];

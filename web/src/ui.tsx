@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { insideTelegram } from './telegram';
 import { useNav } from './nav';
@@ -30,11 +30,16 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
 
 export function Screen({
   title,
+  subtitle,
+  subTone,
   back,
   action,
   children,
 }: {
   title: string;
+  /** Рядок над заголовком (дата, тип слота). */
+  subtitle?: ReactNode;
+  subTone?: 'violet' | 'blue' | 'green';
   back?: boolean;
   action?: ReactNode;
   children: ReactNode;
@@ -50,7 +55,10 @@ export function Screen({
             <Icon name="chevronLeft" size={18} />
           </button>
         )}
-        <h1>{title}</h1>
+        <div className="header-text">
+          {subtitle && <span className={`header-sub${subTone ? ` ${subTone}` : ''}`}>{subtitle}</span>}
+          <h1>{title}</h1>
+        </div>
         {action}
       </header>
       {children}
@@ -75,17 +83,180 @@ export function LoadError({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export function Section({ title, hint, children }: { title?: string; hint?: string; children: ReactNode }) {
+export function Section({
+  title,
+  hint,
+  className,
+  children,
+}: {
+  title?: ReactNode;
+  hint?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="section">
-      {title && (
-        <h2>
-          {title}
-          {hint && <span className="muted small"> · {hint}</span>}
-        </h2>
-      )}
-      <div className="card">{children}</div>
+      <div className={`card${title ? '' : ' untitled'}${className ? ` ${className}` : ''}`}>
+        {title && (
+          <h2 className="section-title">
+            <span>{title}</span>
+            {hint && <span className="hint">{hint}</span>}
+          </h2>
+        )}
+        {children}
+      </div>
     </section>
+  );
+}
+
+/** Плитка з підписом і великим значенням. */
+export function Stat({
+  label,
+  value,
+  sub,
+  tone,
+  subTone,
+  mid,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  sub?: ReactNode;
+  tone?: 'green' | 'red' | 'yellow' | 'blue';
+  subTone?: 'green' | 'red';
+  mid?: boolean;
+}) {
+  return (
+    <div className="stat">
+      <span className="stat-label">{label}</span>
+      <span className={`stat-value${mid ? ' mid' : ''}${tone ? ` ${tone}` : ''}`}>{value}</span>
+      {sub !== undefined && <span className={`stat-sub${subTone ? ` ${subTone}` : ''}`}>{sub}</span>}
+    </div>
+  );
+}
+
+export type Tone = 'green' | 'red' | 'blue' | 'violet' | 'yellow' | 'muted';
+
+const TONE_COLOR: Record<Tone, string> = {
+  green: 'var(--green)',
+  red: 'var(--red)',
+  blue: 'var(--blue)',
+  violet: 'var(--violet)',
+  yellow: 'var(--yellow)',
+  muted: 'var(--line-strong)',
+};
+
+export function Chip({ tone, children }: { tone?: Tone; children: ReactNode }) {
+  return <span className={`chip${tone && tone !== 'muted' ? ` ${tone}` : ''}`}>{children}</span>;
+}
+
+/** Подія стрічки: крапка на лінії часу, заголовок, підпис, мітка праворуч. */
+export function Ev({
+  tone,
+  title,
+  sub,
+  chip,
+  future,
+  faded,
+  onClick,
+}: {
+  tone: Tone;
+  title: ReactNode;
+  sub?: ReactNode;
+  chip?: ReactNode;
+  future?: boolean;
+  faded?: boolean;
+  onClick?: () => void;
+}) {
+  const cls = `ev${future ? ' future' : ''}${faded ? ' faded' : ''}`;
+  const style = { ['--c' as string]: TONE_COLOR[tone] };
+  const body = (
+    <>
+      <span className="ev-dot" />
+      <span className="ev-body">
+        <span className="ev-top">
+          <span className="ev-title">{title}</span>
+          {chip}
+        </span>
+        {sub && <span className="ev-sub">{sub}</span>}
+      </span>
+    </>
+  );
+  return onClick ? (
+    <button className={cls} style={style} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className={cls} style={style}>
+      {body}
+    </div>
+  );
+}
+
+export function StreamNow({ label }: { label: string }) {
+  return (
+    <div className="stream-now" aria-label={label}>
+      <i />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export function Switch({ checked, label, onChange }: { checked: boolean; label: string; onChange: (v: boolean) => void }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className="switch" onClick={() => onChange(!checked)} />;
+}
+
+/**
+ * Шкала абонемента: від дати покупки до кінця строку.
+ * Крапки — відвідування (зелені) і неявки зі списанням (червоні), коло — майбутній запис.
+ * Без строку дії — клітинки використаних занять.
+ */
+export function PassLine({
+  start,
+  end,
+  total,
+  remaining,
+  marks,
+  lang,
+}: {
+  start: string;
+  end: string | null;
+  total: number;
+  remaining: number;
+  marks: { at: string; kind: 'v' | 'n' | 'b' }[];
+  lang: string;
+}) {
+  const used = Math.max(0, total - remaining);
+  if (!end) {
+    return (
+      <div className="cells" role="img" aria-label={`${used} / ${total}`}>
+        {Array.from({ length: Math.min(total, 40) }, (_, i) => (
+          <span key={i} className={i < used ? 'on' : ''} />
+        ))}
+      </div>
+    );
+  }
+  const a = new Date(`${start}T00:00:00`).getTime();
+  const b = new Date(`${end}T23:59:59`).getTime();
+  const span = Math.max(b - a, 1);
+  const pos = (ms: number) => Math.max(0, Math.min(100, ((ms - a) / span) * 100));
+  const nowPct = pos(Date.now());
+  const label = (iso: string) =>
+    new Intl.DateTimeFormat(lang === 'ru' ? 'ru-UA' : 'uk-UA', { day: 'numeric', month: 'short' }).format(new Date(`${iso}T12:00:00`));
+  return (
+    <div className="pass-line" role="img" aria-label={`${label(start)} – ${label(end)}: ${used} / ${total}`}>
+      <span className="track" />
+      <span className="fill" style={{ width: `${nowPct}%` }} />
+      {marks.map((m, i) => (
+        <span key={i} className={`pt ${m.kind}`} style={{ left: `${pos(new Date(m.at).getTime())}%` }} />
+      ))}
+      {nowPct > 0 && nowPct < 100 && <span className="now" style={{ left: `${nowPct}%` }} />}
+      <span className="lbl" style={{ left: 0 }}>
+        {label(start)}
+      </span>
+      <span className="lbl" style={{ right: 0 }}>
+        {label(end)}
+      </span>
+    </div>
   );
 }
 
@@ -102,13 +273,15 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  inset,
 }: {
   value: T;
   options: { value: T; label: string; badge?: number }[];
   onChange: (v: T) => void;
+  inset?: boolean;
 }) {
   return (
-    <div className="segmented" role="tablist">
+    <div className={`segmented${inset ? ' inset' : ''}`} role="tablist">
       {options.map((o) => (
         <button
           key={o.value}
@@ -138,75 +311,3 @@ export function formatDate(iso: string, lang: string) {
 }
 
 export const PHONE_RE = /^(\+?[0-9 ()-]{7,20})?$/;
-
-/**
- * Світне кільце-індикатор (головний візуальний акцент інтерфейсу).
- * value — частка 0…1; tone — палітра дуги.
- */
-export function Ring({
-  value,
-  size = 168,
-  stroke = 12,
-  tone = 'flow',
-  children,
-  label,
-}: {
-  value: number;
-  size?: number;
-  stroke?: number;
-  tone?: 'flow' | 'coral' | 'amber' | 'violet';
-  children?: ReactNode;
-  label?: string;
-}) {
-  const id = useId().replace(/:/g, '');
-  const v = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
-  const r = (size - stroke) / 2 - 6;
-  const c = 2 * Math.PI * r;
-  const stops: Record<string, [string, string]> = {
-    flow: ['#6EA8FF', '#5CE5C2'],
-    coral: ['#FF9A8A', '#FF6F91'],
-    amber: ['#F4C46A', '#FF9A6A'],
-    violet: ['#A98BFF', '#6EA8FF'],
-  };
-  const [a, b] = stops[tone]!;
-  // Точка на кінці дуги — «світло» індикатора.
-  const angle = v * 2 * Math.PI - Math.PI / 2;
-  const cx = size / 2 + r * Math.cos(angle);
-  const cy = size / 2 + r * Math.sin(angle);
-  return (
-    <div className="ring" style={{ width: size, height: size, ['--ring-size' as string]: `${size}px` }} role="img" aria-label={label}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <defs>
-          <linearGradient id={`g${id}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={a} />
-            <stop offset="1" stopColor={b} />
-          </linearGradient>
-          <radialGradient id={`d${id}`} cx="0.5" cy="0.35" r="0.7">
-            <stop offset="0" stopColor="rgba(255,255,255,0.10)" />
-            <stop offset="1" stopColor="rgba(255,255,255,0.01)" />
-          </radialGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={r - stroke - 4} fill={`url(#d${id})`} className="ring-disc" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="ring-track" />
-        {v > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={`url(#g${id})`}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - v)}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            className="ring-arc"
-            style={{ ['--ring-c' as string]: c, ['--ring-off' as string]: c * (1 - v) }}
-          />
-        )}
-        {v > 0 && v < 1 && <circle cx={cx} cy={cy} r={stroke / 2.6} fill="#fff" className="ring-tip" />}
-      </svg>
-      <div className="ring-center">{children}</div>
-    </div>
-  );
-}

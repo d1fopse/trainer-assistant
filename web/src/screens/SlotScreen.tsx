@@ -4,8 +4,8 @@ import { calendarApi, waitlistApi, type BookingStatus, type TrainerSlot, type Wa
 import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic } from '../telegram';
-import { fmt, formatDuration, fromIso, isoDate, timeRange } from '../time';
-import { InfoRow, Loading, LoadError, Screen, Section, useLoad } from '../ui';
+import { fmt, formatDuration, fromIso, isoDate, now, timeRange } from '../time';
+import { Loading, LoadError, Screen, Section, Stat, useLoad } from '../ui';
 import { ClientSelect, useClientOptions } from './ClientSelect';
 import { BookingRow } from './BookingRow';
 
@@ -15,6 +15,15 @@ export function SlotScreen({ id }: { id: number }) {
   const lang = i18n.language;
   const { data: slot, setData, failed, reload } = useLoad(() => calendarApi.slot(id), [id]);
   const clients = useClientOptions();
+  // Сусідні слоти дня — для міні-шкали.
+  const dayKey = slot ? isoDate(fromIso(slot.startsAt)) : null;
+  const daySlots = useLoad(
+    () =>
+      dayKey
+        ? calendarApi.trainerRange(fromIso(`${dayKey}T00:00`).toISO()!, fromIso(`${dayKey}T00:00`).plus({ days: 1 }).toISO()!)
+        : Promise.resolve([] as TrainerSlot[]),
+    [dayKey],
+  );
   const [pick, setPick] = useState('');
   const [trial, setTrial] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -119,9 +128,16 @@ export function SlotScreen({ id }: { id: number }) {
     });
   }
 
+  const isGroup = slot.type === 'GROUP';
+  const waitCount = slot.waitlist?.length ?? 0;
+  const startMs = start.toMillis();
+  const untilMin = Math.round((startMs - Date.now()) / 60000);
+
   return (
     <Screen
-      title={`${fmt(start, lang, 'ccc, d MMMM')} · ${timeRange(slot.startsAt, slot.durationMin)}`}
+      title={timeRange(slot.startsAt, slot.durationMin)}
+      subtitle={`${fmt(start, lang, 'ccc, d MMMM')} · ${t(`calendar.type.${slot.type}`)}${slot.note ? ` · ${slot.note}` : ''}`}
+      subTone={isGroup ? 'violet' : 'blue'}
       back
       action={
         <button className="small-button secondary" onClick={() => nav.push({ name: 'slotForm', id })}>
@@ -129,49 +145,68 @@ export function SlotScreen({ id }: { id: number }) {
         </button>
       }
     >
-      <Section>
-        <InfoRow label={t('slot.type')}>
-          {t(`calendar.type.${slot.type}`)}
-          {slot.type === 'GROUP' && ` · ${slot.bookedCount}/${slot.capacity}`}
-        </InfoRow>
-        <InfoRow label={t('slot.duration')}>{formatDuration(slot.durationMin, lang)}</InfoRow>
-        {slot.seriesId && <InfoRow label={t('slot.repeat')}>↻ {t('slot.inSeries')}</InfoRow>}
-        {slot.note && <InfoRow label={t('slot.note')}>{slot.note}</InfoRow>}
-      </Section>
+      <div className="card stack">
+        <div className="price-top">
+          <span className="muted tiny">{t('slot.dayContext')}</span>
+          {untilMin > 0 && untilMin < 24 * 60 && (
+            <span className="tiny error" style={{ fontWeight: 700 }}>
+              {t('slot.startsIn', { time: formatDuration(Math.max(untilMin, 1), lang) })}
+            </span>
+          )}
+        </div>
+        <MiniScale slot={slot} others={daySlots.data ?? []} />
+      </div>
+
+      <div className="tiles">
+        <Stat
+          label={t('slot.seats')}
+          value={
+            <>
+              {slot.bookedCount}
+              <small>/{slot.capacity}</small>
+            </>
+          }
+        />
+        <Stat label={t('slot.queue')} value={waitCount} tone={waitCount ? 'yellow' : undefined} />
+        <Stat label={t('slot.duration')} value={t('slot.minutes', { count: slot.durationMin })} sub={slot.seriesId ? `↻ ${t('slot.inSeriesShort')}` : undefined} />
+      </div>
 
       <Section title={t('slot.participants')}>
-        {slot.bookings.length === 0 ? (
-          <p className="muted note">{t('calendar.free')}</p>
-        ) : (
-          slot.bookings.map((b) => (
-            <BookingRow
-              key={b.id}
-              b={b}
-              busy={busy}
-              onOpenClient={() => nav.push({ name: 'client', id: b.clientId })}
-              onMark={(status, deduct) => void markBooking(b.id, status, deduct)}
-              onCancel={() => void cancelBooking(b.id, b.name)}
-            />
-          ))
-        )}
+        <div className="participants">
+          {slot.bookings.length === 0 && <p className="muted note">{t('calendar.freeWindow')}</p>}
+          {slot.bookings.map((b) => (
+            <div key={b.id} className={`participant${isGroup ? ' group' : ''}`}>
+              <BookingRow
+                b={b}
+                busy={busy}
+                onOpenClient={() => nav.push({ name: 'client', id: b.clientId })}
+                onMark={(status, deduct) => void markBooking(b.id, status, deduct)}
+                onCancel={() => void cancelBooking(b.id, b.name)}
+              />
+            </div>
+          ))}
+        </div>
       </Section>
 
-      {(slot.waitlist?.length ?? 0) > 0 && (
-        <Section title={t('waitlist.title')} hint={t('waitlist.hint')}>
+      {waitCount > 0 && (
+        <Section title={t('waitlist.title')} hint={t('waitlist.hint')} className="warn-card">
           {slot.waitlist!.map((w, i) => (
             <div key={w.id} className="booking-row">
               <span className="muted small">{i + 1}.</span>
-              <button className="link-button" onClick={() => nav.push({ name: 'client', id: w.clientId })}>
-                {w.name}
-              </button>
-              <span className={`status-chip ${w.status === 'NOTIFIED' ? 'ok' : 'muted'}`}>
-                {w.status === 'NOTIFIED' ? t('waitlist.notified') : t('waitlist.waiting')}
-              </span>
-              <span className="spacer" />
-              <button className="small-button secondary" disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.notify(w.id))}>
+              <div className="list-main">
+                <button className="link-button" onClick={() => nav.push({ name: 'client', id: w.clientId })}>
+                  {w.name}
+                </button>
+                <span className="muted tiny">
+                  {w.status === 'NOTIFIED' && w.notifiedAt
+                    ? `${t('waitlist.notified')} ${fmt(fromIso(w.notifiedAt), lang, 'd MMM, HH:mm')}`
+                    : `${t('waitlist.waitingSince')} ${fmt(fromIso(w.createdAt), lang, 'd MMM, HH:mm')}`}
+                </span>
+              </div>
+              <button className="small-button warn" disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.notify(w.id))}>
                 {t('waitlist.notify')}
               </button>
-              <button className="icon-button" aria-label={t('common.delete')} disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.remove(w.id))}>
+              <button className="icon-button sm" aria-label={t('common.delete')} disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.remove(w.id))}>
                 ×
               </button>
             </div>
@@ -221,5 +256,40 @@ export function SlotScreen({ id }: { id: number }) {
         {slot.seriesId ? t('slot.cancelThisOnly') : t('slot.cancelSlot')}
       </button>
     </Screen>
+  );
+}
+
+/** Міні-шкала дня: цей слот підсвічений, сусідні — блідіші, червона риска — зараз. */
+function MiniScale({ slot, others }: { slot: TrainerSlot; others: TrainerSlot[] }) {
+  const all = [slot, ...others.filter((o) => o.id !== slot.id && o.status === 'OPEN')];
+  const h = (iso: string) => {
+    const d = fromIso(iso);
+    return d.hour + d.minute / 60;
+  };
+  const from = Math.floor(Math.min(...all.map((s) => h(s.startsAt))));
+  const to = Math.min(24, Math.max(from + 2, Math.ceil(Math.max(...all.map((s) => h(s.startsAt) + s.durationMin / 60)))));
+  const pct = (x: number) => ((x - from) / (to - from)) * 100;
+  const n = now();
+  const sameDay = isoDate(n) === isoDate(fromIso(slot.startsAt));
+  const nowH = n.hour + n.minute / 60;
+  const step = to - from > 8 ? 2 : 1;
+  const ticks = [];
+  for (let x = from; x <= to; x += step) ticks.push(x);
+  return (
+    <div className="mini-scale" role="img" aria-label={timeRange(slot.startsAt, slot.durationMin)}>
+      {ticks.map((x) => (
+        <span key={x} className="tick" style={{ left: `${pct(x)}%` }}>
+          <span>{x}</span>
+        </span>
+      ))}
+      {all.map((s) => (
+        <span
+          key={s.id}
+          className={`seg${s.id === slot.id ? ' current' : ''}${s.type === 'GROUP' ? ' group' : ''}`}
+          style={{ left: `${pct(h(s.startsAt))}%`, width: `${pct(h(s.startsAt) + s.durationMin / 60) - pct(h(s.startsAt))}%` }}
+        />
+      ))}
+      {sameDay && nowH >= from && nowH <= to && <span className="now" style={{ left: `${pct(nowH)}%` }} />}
+    </div>
   );
 }

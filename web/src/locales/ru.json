@@ -11,7 +11,8 @@
     "notSet": "Не указано",
     "search": "Поиск по имени или телефону",
     "uah": "{{value}} грн",
-    "done": "Готово"
+    "done": "Готово",
+    "uahShort": "грн"
   },
   "errors": {
     "openInTelegram": "Откройте это приложение в Telegram через бота.",
@@ -30,12 +31,23 @@
     "prices": "Цены",
     "profile": "Профиль",
     "calendar": "Календарь",
-    "analytics": "Аналитика"
+    "analytics": "Аналитика",
+    "home": "Главная"
   },
   "home": {
     "greeting": "Привет, {{name}}!",
     "guestWaiting": "Спасибо за анкету! Тренер скоро подтвердит ваш профиль.",
-    "trainerHint": "Вы вошли как тренер."
+    "trainerHint": "Вы вошли как тренер.",
+    "writeTrainer": "Написать тренеру",
+    "inTime": "через {{time}}",
+    "inDays_one": "через {{count}} день",
+    "inDays_few": "через {{count}} дня",
+    "inDays_many": "через {{count}} дней",
+    "inDays_other": "через {{count}} дня",
+    "nextSession": "Следующее занятие",
+    "myStream": "Мои занятия",
+    "booked": "запланировано",
+    "came": "посещено"
   },
   "status": {
     "GUEST": "Новый",
@@ -58,7 +70,11 @@
     "noResults": "Никого не найдено.",
     "noTelegram": "без Telegram",
     "newClient": "Новый клиент",
-    "editClient": "Редактирование"
+    "editClient": "Редактирование",
+    "nextSession": "Следующее занятие · неделя",
+    "notBooked": "не записан",
+    "weekRail": "Занятия на этой неделе",
+    "left": "осталось {{count}}"
   },
   "card": {
     "contacts": "Контакты",
@@ -90,7 +106,10 @@
     "pickManual": "Выберите карточку без Telegram",
     "nothingToPick": "Нет подходящих карточек.",
     "confirmLink": "Объединить «{{source}}» с карточкой «{{target}}»? Это действие нельзя отменить.",
-    "openChat": "Написать"
+    "openChat": "Написать",
+    "since": "с {{date}}",
+    "invitedBy": "по приглашению: {{name}}",
+    "addPhone": "Добавить"
   },
   "form": {
     "name": "Имя",
@@ -134,7 +153,14 @@
     "price": "Цена, грн",
     "sessionsCount": "Количество занятий в абонементе",
     "visible": "Показывать клиентам",
-    "confirmDelete": "Удалить «{{title}}»?"
+    "confirmDelete": "Удалить «{{title}}»?",
+    "group": {
+      "SINGLE": "Разовые",
+      "PASS": "Абонементы"
+    },
+    "dotsHint": "точка — одно занятие",
+    "best": "выгодно",
+    "trainerHint": "Полоска разовых занятий — цена относительно самого дорогого. Скрытые позиции видите только вы."
   },
   "profile": {
     "title": "Профиль",
@@ -163,7 +189,12 @@
       "beginner": "Начинающий",
       "intermediate": "Средний уровень",
       "advanced": "Опытный"
-    }
+    },
+    "stepContacts": "Как к вам обращаться",
+    "stepGoal": "Цель и опыт",
+    "stepConsent": "Согласие на обработку данных",
+    "next": "Далее",
+    "injuriesPlaceholder": "Например: болит колено после бега"
   },
   "calendar": {
     "title": "Календарь",
@@ -213,7 +244,15 @@
     "groupsCount_one": "группа",
     "groupsCount_few": "группы",
     "groupsCount_many": "групп",
-    "groupsCount_other": "группы"
+    "groupsCount_other": "группы",
+    "today": "к сегодня",
+    "now": "Сейчас {{time}}",
+    "bellHint": "Колокольчик на занятом времени — бот напишет, как только место освободится.",
+    "freeWindow": "Свободное окно",
+    "booked": "Занято мест",
+    "freeSlotsLabel": "Свободных слотов",
+    "toMark": "Отметить",
+    "todayShort": "сегодня"
   },
   "slot": {
     "new": "Новый слот",
@@ -250,7 +289,12 @@
     "minutes_one": "{{count}} мин",
     "minutes_few": "{{count}} мин",
     "minutes_many": "{{count}} мин",
-    "minutes_other": "{{count}} мин"
+    "minutes_other": "{{count}} мин",
+    "dayContext": "Этот слот среди других за день",
+    "startsIn": "через {{time}}",
+    "seats": "Мест",
+    "inSeriesShort": "постоянный",
+    "queue": "Очередь"
   },
   "apiErrors": {
     "overlap": "Это время пересекается с другим слотом.",
@@ -381,7 +425,31 @@
       "passDelete": "Удалён абонемент на {{count}} занятий"
     },
     "moreUpcoming": "…и ещё {{count}}",
-    "noUpcomingShort": "записей нет"
+    "noUpcomingShort": "записей нет",
+    "notMarked": "не отмечено",
+    "paymentEvent": "Оплата {{amount}}",
+    "plusSessions": "+{{count}} зан.",
+    "giftPassEvent": "Абонемент без оплаты",
+    "passOf": "Абонемент {{count}}",
+    "leftShort": "осталось",
+    "addGiftPassShort": "Без оплаты",
+    "noShows": "Неявки",
+    "paid": "Оплачено",
+    "history": "История клиента",
+    "historyHint": "будущее сверху",
+    "nowMark": "сейчас · {{date}}",
+    "showEarlier": "Показать раньше ({{count}})",
+    "allPasses": "Все абонементы ({{count}})",
+    "yourPass": "Ваш абонемент {{count}}",
+    "noExpiry": "без срока",
+    "daysLeft_one": "ещё {{count}} день",
+    "daysLeft_few": "ещё {{count}} дня",
+    "daysLeft_many": "ещё {{count}} дней",
+    "daysLeft_other": "ещё {{count}} дня",
+    "paceHint_one": "Чтобы успеть всё — примерно {{count}} занятие в неделю.",
+    "paceHint_few": "Чтобы успеть всё — примерно {{count}} занятия в неделю.",
+    "paceHint_many": "Чтобы успеть всё — примерно {{count}} занятий в неделю.",
+    "paceHint_other": "Чтобы успеть всё — примерно {{count}} занятия в неделю."
   },
   "waitlist": {
     "join": "Сообщить, если освободится место",
@@ -392,14 +460,28 @@
     "waiting": "ждёт",
     "notified": "сообщено",
     "notify": "Сообщить",
-    "notDelivered": "Не удалось отправить: клиент не запускал бота или заблокировал его."
+    "notDelivered": "Не удалось отправить: клиент не запускал бота или заблокировал его.",
+    "inQueue": "вы в очереди",
+    "waitingSince": "ждёт с"
   },
   "botSettings": {
     "title": "Бот",
     "summaryTime": "Утренний план дня в",
     "reminders": "Напоминания клиентам за 3 часа до занятия",
     "hint": "Рассылка — в боте командой /broadcast. Чтобы получать план дня, нажмите /start в боте.",
-    "saved": "Сохранено"
+    "saved": "Сохранено",
+    "day": "День бота",
+    "dayHint": "что и когда отправляет бот",
+    "summary": "Утренний план дня",
+    "summaryHint": "вам в Telegram: занятия на сегодня",
+    "hoursShort": "ч",
+    "reminder": "Напоминание клиенту",
+    "reminderHint": "за 3 часа до занятия",
+    "waitlist": "Освободилось место",
+    "waitlistHint": "бот пишет первому в листе ожидания",
+    "startHint": "Чтобы получать план дня, нажмите /start в боте.",
+    "broadcast": "Рассылка",
+    "broadcastHint": "В боте командой /broadcast — с предпросмотром перед отправкой."
   },
   "analytics": {
     "title": "Аналитика",
@@ -459,6 +541,13 @@
     "cancelledCount_many": "отмен",
     "cancelledCount_other": "отмены",
     "newClientsShort": "Новые клиенты",
-    "forPeriod": "за период"
+    "forPeriod": "за период",
+    "visits": "Посещения",
+    "attendanceRate": "{{rate}} пришли",
+    "thisWeek": "Эта неделя",
+    "thisWeekHint": "справа — заполненность за период",
+    "events": "События",
+    "renew": "продлить",
+    "byClientHint": "пришёл · неявки"
   }
 }

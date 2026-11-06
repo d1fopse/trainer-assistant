@@ -18,14 +18,13 @@ import { SlotForm } from './SlotForm';
 import { SeriesForm } from './SeriesForm';
 import { PassForm, PaymentForm, VisitForm } from './PaymentForm';
 
-
-
 export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t } = useTranslation();
   const isTrainer = me.user.role === 'TRAINER';
   const tabs: Tab[] = isTrainer ? ['calendar', 'clients', 'analytics', 'prices', 'profile'] : ['calendar', 'prices', 'profile'];
 
-  const [tab, setTab] = useState<Tab>(tabs[0]!);
+  // Клієнт з карткою починає з «Головної» (профіль), решта — з календаря.
+  const [tab, setTab] = useState<Tab>(me.user.role === 'CLIENT' ? 'profile' : tabs[0]!);
   // Окрема історія екранів для кожної вкладки.
   const [stacks, setStacks] = useState<Record<Tab, Route[]>>({
     calendar: [{ name: 'calendar' }],
@@ -71,11 +70,11 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
       </main>
       <nav className="tabbar">
         {tabs.map((tb) => (
-          <button key={tb} className={tb === tab ? 'active' : ''} onClick={() => selectTab(tb)}>
+          <button key={tb} className={tb === tab ? 'active' : ''} aria-current={tb === tab ? 'page' : undefined} onClick={() => selectTab(tb)}>
             <span className="tab-icon">
-              <Icon name={tb} />
+              <Icon name={tb === 'profile' && !isTrainer ? 'home' : tb} />
             </span>
-            {t(`tabs.${tb}`)}
+            {t(tb === 'profile' && !isTrainer ? 'tabs.home' : `tabs.${tb}`)}
           </button>
         ))}
       </nav>
@@ -92,7 +91,6 @@ function renderRoute(route: Route, me: Me, onLanguage: (l: Lang) => void) {
           isTrainer={isTrainer}
           canWaitlist={me.user.role === 'CLIENT'}
           awaitingApproval={me.user.role === 'GUEST' && me.client !== null}
-          showMyPass={!isTrainer && me.client !== null}
           trainerUsername={me.trainerUsername}
         />
       );

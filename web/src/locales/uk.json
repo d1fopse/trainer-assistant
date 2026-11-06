@@ -11,7 +11,8 @@
     "notSet": "Не вказано",
     "search": "Пошук за ім'ям або телефоном",
     "uah": "{{value}} грн",
-    "done": "Готово"
+    "done": "Готово",
+    "uahShort": "грн"
   },
   "errors": {
     "openInTelegram": "Відкрийте цей додаток у Telegram через бота.",
@@ -30,12 +31,23 @@
     "prices": "Ціни",
     "profile": "Профіль",
     "calendar": "Календар",
-    "analytics": "Аналітика"
+    "analytics": "Аналітика",
+    "home": "Головна"
   },
   "home": {
     "greeting": "Привіт, {{name}}!",
     "guestWaiting": "Дякуємо за анкету! Тренер скоро підтвердить ваш профіль.",
-    "trainerHint": "Ви увійшли як тренер."
+    "trainerHint": "Ви увійшли як тренер.",
+    "writeTrainer": "Написати тренеру",
+    "inTime": "через {{time}}",
+    "inDays_one": "через {{count}} день",
+    "inDays_few": "через {{count}} дні",
+    "inDays_many": "через {{count}} днів",
+    "inDays_other": "через {{count}} дня",
+    "nextSession": "Наступне заняття",
+    "myStream": "Мої заняття",
+    "booked": "заплановано",
+    "came": "відвідано"
   },
   "status": {
     "GUEST": "Новий",
@@ -58,7 +70,11 @@
     "noResults": "Нікого не знайдено.",
     "noTelegram": "без Telegram",
     "newClient": "Новий клієнт",
-    "editClient": "Редагування"
+    "editClient": "Редагування",
+    "nextSession": "Наступне заняття · тиждень",
+    "notBooked": "не записаний",
+    "weekRail": "Заняття цього тижня",
+    "left": "лишилось {{count}}"
   },
   "card": {
     "contacts": "Контакти",
@@ -90,7 +106,10 @@
     "pickManual": "Оберіть картку без Telegram",
     "nothingToPick": "Немає відповідних карток.",
     "confirmLink": "Об'єднати «{{source}}» з карткою «{{target}}»? Цю дію не можна скасувати.",
-    "openChat": "Написати"
+    "openChat": "Написати",
+    "since": "з {{date}}",
+    "invitedBy": "за запрошенням: {{name}}",
+    "addPhone": "Додати"
   },
   "form": {
     "name": "Ім'я",
@@ -134,7 +153,14 @@
     "price": "Ціна, грн",
     "sessionsCount": "Кількість занять в абонементі",
     "visible": "Показувати клієнтам",
-    "confirmDelete": "Видалити «{{title}}»?"
+    "confirmDelete": "Видалити «{{title}}»?",
+    "group": {
+      "SINGLE": "Разові",
+      "PASS": "Абонементи"
+    },
+    "dotsHint": "крапка — одне заняття",
+    "best": "вигідно",
+    "trainerHint": "Смужка разових занять — ціна відносно найдорожчого. Приховані позиції бачите лише ви."
   },
   "profile": {
     "title": "Профіль",
@@ -163,7 +189,12 @@
       "beginner": "Початківець",
       "intermediate": "Середній рівень",
       "advanced": "Досвідчений"
-    }
+    },
+    "stepContacts": "Як до вас звертатися",
+    "stepGoal": "Мета і досвід",
+    "stepConsent": "Згода на обробку даних",
+    "next": "Далі",
+    "injuriesPlaceholder": "Наприклад: болить коліно після бігу"
   },
   "calendar": {
     "title": "Календар",
@@ -213,7 +244,15 @@
     "groupsCount_one": "група",
     "groupsCount_few": "групи",
     "groupsCount_many": "груп",
-    "groupsCount_other": "групи"
+    "groupsCount_other": "групи",
+    "today": "до сьогодні",
+    "now": "Зараз {{time}}",
+    "bellHint": "Дзвіночок на зайнятому часі — бот напише, щойно місце звільниться.",
+    "freeWindow": "Вільне вікно",
+    "booked": "Зайнято місць",
+    "freeSlotsLabel": "Вільних слотів",
+    "toMark": "Відмітити",
+    "todayShort": "сьогодні"
   },
   "slot": {
     "new": "Новий слот",
@@ -250,7 +289,12 @@
     "minutes_one": "{{count}} хв",
     "minutes_few": "{{count}} хв",
     "minutes_many": "{{count}} хв",
-    "minutes_other": "{{count}} хв"
+    "minutes_other": "{{count}} хв",
+    "dayContext": "Цей слот серед інших за день",
+    "startsIn": "через {{time}}",
+    "seats": "Місць",
+    "inSeriesShort": "постійний",
+    "queue": "Черга"
   },
   "apiErrors": {
     "overlap": "Цей час перетинається з іншим слотом.",
@@ -381,7 +425,31 @@
       "passDelete": "Видалено абонемент на {{count}} занять"
     },
     "moreUpcoming": "…і ще {{count}}",
-    "noUpcomingShort": "записів немає"
+    "noUpcomingShort": "записів немає",
+    "notMarked": "не відмічено",
+    "paymentEvent": "Оплата {{amount}}",
+    "plusSessions": "+{{count}} зан.",
+    "giftPassEvent": "Абонемент без оплати",
+    "passOf": "Абонемент {{count}}",
+    "leftShort": "лишилось",
+    "addGiftPassShort": "Без оплати",
+    "noShows": "Неявки",
+    "paid": "Сплачено",
+    "history": "Історія клієнта",
+    "historyHint": "майбутнє зверху",
+    "nowMark": "зараз · {{date}}",
+    "showEarlier": "Показати раніше ({{count}})",
+    "allPasses": "Усі абонементи ({{count}})",
+    "yourPass": "Ваш абонемент {{count}}",
+    "noExpiry": "без строку",
+    "daysLeft_one": "ще {{count}} день",
+    "daysLeft_few": "ще {{count}} дні",
+    "daysLeft_many": "ще {{count}} днів",
+    "daysLeft_other": "ще {{count}} дня",
+    "paceHint_one": "Щоб устигнути все — приблизно {{count}} заняття на тиждень.",
+    "paceHint_few": "Щоб устигнути все — приблизно {{count}} заняття на тиждень.",
+    "paceHint_many": "Щоб устигнути все — приблизно {{count}} занять на тиждень.",
+    "paceHint_other": "Щоб устигнути все — приблизно {{count}} заняття на тиждень."
   },
   "waitlist": {
     "join": "Повідомити, якщо звільниться місце",
@@ -392,14 +460,28 @@
     "waiting": "чекає",
     "notified": "повідомлено",
     "notify": "Повідомити",
-    "notDelivered": "Не вдалося надіслати: клієнт не запускав бота або заблокував його."
+    "notDelivered": "Не вдалося надіслати: клієнт не запускав бота або заблокував його.",
+    "inQueue": "ви в черзі",
+    "waitingSince": "чекає з"
   },
   "botSettings": {
     "title": "Бот",
     "summaryTime": "Ранковий план дня о",
     "reminders": "Нагадування клієнтам за 3 години до заняття",
     "hint": "Розсилка — у боті командою /broadcast. Щоб отримувати план дня, натисніть /start у боті.",
-    "saved": "Збережено"
+    "saved": "Збережено",
+    "day": "День бота",
+    "dayHint": "що й коли надсилає бот",
+    "summary": "Ранковий план дня",
+    "summaryHint": "вам у Telegram: заняття на сьогодні",
+    "hoursShort": "год",
+    "reminder": "Нагадування клієнту",
+    "reminderHint": "за 3 години до заняття",
+    "waitlist": "Звільнилось місце",
+    "waitlistHint": "бот пише першому в листі очікування",
+    "startHint": "Щоб отримувати план дня, натисніть /start у боті.",
+    "broadcast": "Розсилка",
+    "broadcastHint": "У боті командою /broadcast — з попереднім переглядом перед відправкою."
   },
   "analytics": {
     "title": "Аналітика",
@@ -459,6 +541,13 @@
     "cancelledCount_many": "скасувань",
     "cancelledCount_other": "скасування",
     "newClientsShort": "Нові клієнти",
-    "forPeriod": "за період"
+    "forPeriod": "за період",
+    "visits": "Відвідування",
+    "attendanceRate": "{{rate}} прийшли",
+    "thisWeek": "Цей тиждень",
+    "thisWeekHint": "праворуч — заповненість за період",
+    "events": "Події",
+    "renew": "продовжити",
+    "byClientHint": "прийшов · неявки"
   }
 }

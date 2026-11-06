@@ -5,6 +5,8 @@ const paths: Record<string, string> = {
   analytics: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   prices: 'M12.6 3H20a1 1 0 0 1 1 1v7.4a1 1 0 0 1-.3.7l-8.6 8.6a1.5 1.5 0 0 1-2.1 0l-6.7-6.7a1.5 1.5 0 0 1 0-2.1l8.6-8.6a1 1 0 0 1 .7-.3zM16.5 7.5h.01',
   profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 21c.7-4 3.7-6.5 7.5-6.5s6.8 2.5 7.5 6.5',
+  home: 'M4 10.5L12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z',
+  send: 'M3 11l17-7-5 17-3.5-7zM11.5 14L20 4',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0',
   repeat: 'M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4',
   check: 'M5 12.5l4.5 4.5L19 7.5',
@@ -25,7 +27,7 @@ export function Icon({ name, size = 22, className }: { name: IconName; size?: nu
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api, type ClientStatus } from '../api';
 import { useNav } from '../nav';
 import { confirmAction, haptic, openChat } from '../telegram';
+import { fmt, fromIso } from '../time';
 import { InfoRow, Loading, LoadError, Screen, Section, formatDate, useLoad } from '../ui';
 import { ClientMoney } from './ClientMoney';
 
@@ -43,9 +44,16 @@ export function ClientCardScreen({ id }: { id: number }) {
     }
   }
 
+  const since = fmt(fromIso(c.createdAt), i18n.language, 'MMMM yyyy');
+  const subtitle = [t(`status.${c.status}`), t('card.since', { date: since }), c.referredBy ? t('card.invitedBy', { name: c.referredBy.name }) : null]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <Screen
       title={c.name}
+      subtitle={subtitle}
+      subTone={c.status === 'ACTIVE' ? 'green' : undefined}
       back
       action={
         <button className="small-button secondary" onClick={() => nav.push({ name: 'clientForm', id: c.id })}>
@@ -53,44 +61,49 @@ export function ClientCardScreen({ id }: { id: number }) {
         </button>
       }
     >
-      <p>
-        <span className={`badge status-${c.status}`}>{t(`status.${c.status}`)}</span>
-      </p>
-
       {c.status === 'GUEST' && (
         <button disabled={busy} onClick={() => void setStatus('ACTIVE')}>
           {t('card.approve')}
         </button>
       )}
 
-      <Section title={t('card.contacts')}>
-        <InfoRow label={t('card.phone')}>{c.phone ? <a href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}>{c.phone}</a> : notSet}</InfoRow>
-        <InfoRow label={t('card.telegram')}>
-          {c.telegram ? (
-            c.telegram.username ? (
-              <button className="link-button" onClick={() => openChat(c.telegram!.username!)}>
-                @{c.telegram.username}
-              </button>
-            ) : (
-              c.telegram.firstName ?? 'Telegram'
-            )
+      <div className="tiles two">
+        {c.phone ? (
+          <a className="stat" href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}>
+            <span className="stat-label">{t('card.phone')}</span>
+            <span className="link">{c.phone}</span>
+          </a>
+        ) : (
+          <button className="stat" onClick={() => nav.push({ name: 'clientForm', id: c.id })}>
+            <span className="stat-label">{t('card.phone')}</span>
+            <span className="link">{t('card.addPhone')}</span>
+          </button>
+        )}
+        {c.telegram ? (
+          c.telegram.username ? (
+            <button className="stat" onClick={() => openChat(c.telegram!.username!)}>
+              <span className="stat-label">{t('card.telegram')}</span>
+              <span className="link">@{c.telegram.username}</span>
+            </button>
           ) : (
-            <span className="muted">{t('card.telegramNone')}</span>
-          )}
-        </InfoRow>
-      </Section>
-
-      {!c.telegram && (
-        <div className="stack">
+            <div className="stat">
+              <span className="stat-label">{t('card.telegram')}</span>
+              <span className="link" style={{ color: 'var(--text)' }}>
+                {c.telegram.firstName ?? 'Telegram'}
+              </span>
+            </div>
+          )
+        ) : (
           <button
-            className="secondary"
+            className="stat"
             onClick={() => nav.push({ name: 'pickClient', mode: 'guestFor', clientId: c.id, clientName: c.name })}
           >
-            {t('card.linkTelegram')}
+            <span className="stat-label">{t('card.telegram')}</span>
+            <span className="link">{t('card.linkTelegram')}</span>
           </button>
-          <p className="muted small">{t('card.linkTelegramHint')}</p>
-        </div>
-      )}
+        )}
+      </div>
+      {!c.telegram && <p className="muted tiny" style={{ padding: '0 4px' }}>{t('card.linkTelegramHint')}</p>}
       {c.telegram && c.status === 'GUEST' && (
         <div className="stack">
           <button
@@ -106,8 +119,18 @@ export function ClientCardScreen({ id }: { id: number }) {
       <ClientMoney clientId={c.id} />
 
       <Section title={t('card.questionnaire')}>
-        <InfoRow label={t('card.goal')}>{c.goal ? t(`onboarding.goals.${c.goal}`) : notSet}</InfoRow>
-        <InfoRow label={t('card.experience')}>{c.experience ? t(`onboarding.levels.${c.experience}`) : notSet}</InfoRow>
+        <div className="info-row">
+          <div className="tiles two" style={{ gap: 8 }}>
+            <div className="list-main">
+              <span className="muted tiny">{t('card.goal')}</span>
+              <span className="value">{c.goal ? t(`onboarding.goals.${c.goal}`) : notSet}</span>
+            </div>
+            <div className="list-main">
+              <span className="muted tiny">{t('card.experience')}</span>
+              <span className="value">{c.experience ? t(`onboarding.levels.${c.experience}`) : notSet}</span>
+            </div>
+          </div>
+        </div>
         <InfoRow label={t('card.health')}>{c.health ? <span className="pre">{c.health}</span> : notSet}</InfoRow>
         <InfoRow label={t('card.injuries')}>
           {c.injuries ? <span className="pre warn-text">{c.injuries}</span> : notSet}

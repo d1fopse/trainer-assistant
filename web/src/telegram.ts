@@ -31,9 +31,9 @@ export function initTelegram() {
   webApp?.expand();
   // Інтерфейс завжди темний — підфарбовуємо шапку й фон Telegram під нього.
   try {
-    webApp?.setHeaderColor?.('#0D141D');
-    webApp?.setBackgroundColor?.('#0D141D');
-    webApp?.setBottomBarColor?.('#0D141D');
+    webApp?.setHeaderColor?.('#0B0D10');
+    webApp?.setBackgroundColor?.('#0B0D10');
+    webApp?.setBottomBarColor?.('#0B0D10');
   } catch {
     /* старі версії Telegram */
   }

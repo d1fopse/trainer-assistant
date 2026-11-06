@@ -432,10 +432,11 @@ export function registerMoneyRoutes(app: FastifyInstance, db: Db, hooks: Calenda
     return {
       summary: {
         remaining: summary.remaining,
-        activePasses: summary.activePasses.map(({ id, totalSessions, remaining, expiresAt }) => ({
+        activePasses: summary.activePasses.map(({ id, totalSessions, remaining, purchasedAt, expiresAt }) => ({
           id,
           totalSessions,
           remaining,
+          purchasedAt,
           expiresAt,
         })),
         attended: summary.attended,
