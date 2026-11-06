@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Lang, Me } from '../api';
 import { NavContext, type Nav, type Route, type Tab } from '../nav';
 import { bindBackButton } from '../telegram';
+import { Calendar } from './Calendar';
 import { Clients } from './Clients';
 import { ClientCardScreen } from './ClientCard';
 import { ClientForm } from './ClientForm';
@@ -10,17 +11,21 @@ import { PickClient } from './PickClient';
 import { Prices } from './Prices';
 import { PriceForm } from './PriceForm';
 import { Profile } from './Profile';
+import { SlotScreen } from './SlotScreen';
+import { SlotForm } from './SlotForm';
+import { SeriesForm } from './SeriesForm';
 
-const TAB_ICONS: Record<Tab, string> = { clients: '👥', prices: '₴', profile: '👤' };
+const TAB_ICONS: Record<Tab, string> = { calendar: '📅', clients: '👥', prices: '₴', profile: '👤' };
 
 export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t } = useTranslation();
   const isTrainer = me.user.role === 'TRAINER';
-  const tabs: Tab[] = isTrainer ? ['clients', 'prices', 'profile'] : ['prices', 'profile'];
+  const tabs: Tab[] = isTrainer ? ['calendar', 'clients', 'prices', 'profile'] : ['calendar', 'prices', 'profile'];
 
   const [tab, setTab] = useState<Tab>(tabs[0]!);
   // Окрема історія екранів для кожної вкладки.
   const [stacks, setStacks] = useState<Record<Tab, Route[]>>({
+    calendar: [{ name: 'calendar' }],
     clients: [{ name: 'clients' }],
     prices: [{ name: 'prices' }],
     profile: [{ name: 'profile' }],
@@ -77,6 +82,14 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
 function renderRoute(route: Route, me: Me, onLanguage: (l: Lang) => void) {
   const isTrainer = me.user.role === 'TRAINER';
   switch (route.name) {
+    case 'calendar':
+      return <Calendar isTrainer={isTrainer} trainerUsername={me.trainerUsername} />;
+    case 'slot':
+      return isTrainer ? <SlotScreen id={route.id} /> : null;
+    case 'slotForm':
+      return isTrainer ? <SlotForm id={route.id} date={route.date} /> : null;
+    case 'seriesForm':
+      return isTrainer ? <SeriesForm seriesId={route.seriesId} fromDate={route.fromDate} /> : null;
     case 'clients':
       return isTrainer ? <Clients /> : null;
     case 'client':

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { and, asc, eq, ilike, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
-import { clients, users, type Client } from '../db/schema.js';
+import { bookings, clients, series, users, type Client } from '../db/schema.js';
 import { requireTrainer } from '../auth.js';
 import { GOALS, LEVELS, idParam, optionalText, phoneSchema } from './validation.js';
 
@@ -79,6 +79,25 @@ async function validReferrer(db: Db, clientId: number | null, referrerId: number
   if (referrerId === clientId) return false;
   const [r] = await db.select({ id: clients.id }).from(clients).where(eq(clients.id, referrerId));
   return Boolean(r);
+}
+
+type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+
+/** Переносить записи, серії (а з наступних етапів — абонементи й платежі) з картки на картку. */
+async function moveClientData(tx: Tx, fromId: number, toId: number) {
+  // Якщо обидві картки записані на той самий слот — лишаємо запис основної.
+  await tx.execute(sql`
+    update bookings b set status = 'CANCELLED'
+    where b.client_id = ${fromId} and b.status <> 'CANCELLED'
+      and exists (select 1 from bookings t where t.slot_id = b.slot_id and t.client_id = ${toId} and t.status <> 'CANCELLED')`);
+  // Пробне заняття може бути лише одне.
+  const [toTrial] = await tx
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(and(eq(bookings.clientId, toId), eq(bookings.isTrial, true), ne(bookings.status, 'CANCELLED')));
+  if (toTrial) await tx.update(bookings).set({ isTrial: false }).where(eq(bookings.clientId, fromId));
+  await tx.update(bookings).set({ clientId: toId }).where(eq(bookings.clientId, fromId));
+  await tx.update(series).set({ clientId: toId }).where(eq(series.clientId, fromId));
 }
 
 export function registerClientRoutes(app: FastifyInstance, db: Db) {
@@ -179,6 +198,8 @@ export function registerClientRoutes(app: FastifyInstance, db: Db) {
       if (!source.userId) return { error: 'source_has_no_telegram' as const, code: 409 };
 
       const fill = <K extends keyof Client>(k: K) => target[k] ?? source[k];
+
+      await moveClientData(tx, sourceId, targetId);
 
       // Посилання «хто кого запросив» переносимо з картки гостя на основну.
       await tx

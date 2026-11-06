@@ -518,3 +518,187 @@ button.danger {
 input[type='search'] {
   width: 100%;
 }
+
+/* ---------- Етап 3: календар ---------- */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.week-label {
+  font-weight: 600;
+}
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.week-strip .day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 0 6px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.week-strip .day.past {
+  opacity: 0.55;
+}
+
+.week-strip .day.today .day-num {
+  color: var(--link);
+}
+
+.week-strip .day.active {
+  background: var(--button);
+  color: var(--button-text);
+  opacity: 1;
+}
+
+.week-strip .day.active .day-num {
+  color: var(--button-text);
+}
+
+.day-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.day-num {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.day-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.day-dot.on {
+  background: currentColor;
+}
+
+.day-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+
+.day-title::first-letter {
+  text-transform: uppercase;
+}
+
+.slot-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+  border-radius: 12px;
+}
+
+.slot-card.free {
+  border-left: 3px solid var(--ok);
+}
+
+.slot-time {
+  flex: none;
+  min-width: 92px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slot-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-weight: 500;
+}
+
+.ok-text {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.slot-card.public .slot-state {
+  font-weight: 600;
+}
+
+.slot-card.public.free .slot-state {
+  color: var(--ok);
+}
+
+.slot-card.public.busy {
+  opacity: 0.6;
+}
+
+.slot-card.public.mine {
+  border-left: 3px solid var(--button);
+}
+
+.slot-card.public.mine .slot-state {
+  color: var(--link);
+}
+
+.booking-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--separator);
+}
+
+.booking-row:last-child {
+  border-bottom: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.weekday-picker {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.weekday-picker button {
+  padding: 10px 0;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.weekday-picker button.active {
+  background: var(--button);
+  color: var(--button-text);
+}
+
+input[type='date'],
+input[type='time'] {
+  min-height: 44px;
+}

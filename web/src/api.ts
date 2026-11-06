@@ -93,6 +93,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public code?: string,
+    public body?: Record<string, unknown>,
   ) {
     super(`API error ${status}${code ? `: ${code}` : ''}`);
   }
@@ -112,13 +113,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
   if (!res.ok) {
-    let code: string | undefined;
+    let body: Record<string, unknown> | undefined;
     try {
-      code = ((await res.json()) as { error?: string }).error;
+      body = (await res.json()) as Record<string, unknown>;
     } catch {
       /* тіла може не бути */
     }
-    throw new ApiError(res.status, code);
+    throw new ApiError(res.status, typeof body?.error === 'string' ? body.error : undefined, body);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -157,4 +158,109 @@ export const api = {
   deletePrice: (id: number) => request<void>(`/api/prices/${id}`, { method: 'DELETE' }),
   reorderPrices: (ids: number[]) =>
     request<{ prices: Price[] }>('/api/prices/order', json('PUT', { ids })).then((r) => r.prices),
+};
+
+// ---------- Календар (етап 3) ----------
+
+export type SlotType = 'INDIVIDUAL' | 'GROUP';
+export type BookingStatus = 'BOOKED' | 'ATTENDED' | 'NO_SHOW' | 'CANCELLED';
+
+export type SlotBooking = {
+  id: number;
+  clientId: number;
+  name: string;
+  status: BookingStatus;
+  isTrial: boolean;
+};
+
+export type TrainerSlot = {
+  id: number;
+  startsAt: string;
+  durationMin: number;
+  type: SlotType;
+  capacity: number;
+  status: 'OPEN' | 'CANCELLED';
+  seriesId: number | null;
+  note: string | null;
+  bookings: SlotBooking[];
+  bookedCount: number;
+};
+
+export type PublicSlot = {
+  id: number;
+  startsAt: string;
+  durationMin: number;
+  type: SlotType;
+  capacity: number;
+  freeSeats: number;
+  mine: boolean;
+};
+
+export type SeriesInfo = {
+  id: number;
+  clientId: number;
+  weekdays: number[];
+  startTime: string;
+  durationMin: number;
+  startDate: string;
+  endDate: string;
+};
+
+export type Overlap = { id: number; startsAt: string; durationMin: number; type: SlotType };
+
+export type SlotCreate = {
+  startsAt: string;
+  durationMin: number;
+  type: SlotType;
+  capacity?: number;
+  note?: string;
+  clientIds?: number[];
+  isTrial?: boolean;
+  force?: boolean;
+};
+
+export type SeriesCreate = {
+  clientId: number;
+  weekdays: number[];
+  startTime: string;
+  durationMin: number;
+  startDate: string;
+  endDate: string;
+};
+
+export type SeriesResult = { series: SeriesInfo; created: number; skipped: string[] };
+
+/** Деталі помилки 409 overlap. */
+export async function readErrorBody(e: unknown): Promise<Record<string, unknown> | null> {
+  return e instanceof ApiError ? (e.body ?? null) : null;
+}
+
+export const calendarApi = {
+  trainerRange: (from: string, to: string) =>
+    request<{ slots: TrainerSlot[] }>(`/api/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then(
+      (r) => r.slots,
+    ),
+  publicRange: (from: string, to: string) =>
+    request<{ slots: PublicSlot[] }>(`/api/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then(
+      (r) => r.slots,
+    ),
+  slot: (id: number) => request<{ slot: TrainerSlot }>(`/api/slots/${id}`).then((r) => r.slot),
+  createSlot: (body: SlotCreate) => request<{ slot: TrainerSlot }>('/api/slots', json('POST', body)).then((r) => r.slot),
+  updateSlot: (
+    id: number,
+    body: Partial<{ startsAt: string; durationMin: number; capacity: number; note: string | null; force: boolean }>,
+  ) => request<{ slot: TrainerSlot }>(`/api/slots/${id}`, json('PATCH', body)).then((r) => r.slot),
+  cancelSlot: (id: number) => request<{ ok: true }>(`/api/slots/${id}/cancel`, { method: 'POST' }),
+  addBooking: (slotId: number, clientId: number, isTrial = false) =>
+    request<{ slot: TrainerSlot }>(`/api/slots/${slotId}/bookings`, json('POST', { clientId, isTrial })).then((r) => r.slot),
+  cancelBooking: (id: number) =>
+    request<{ slot: TrainerSlot }>(`/api/bookings/${id}`, json('PATCH', { status: 'CANCELLED' })).then((r) => r.slot),
+  createSeries: (body: SeriesCreate) => request<SeriesResult>('/api/series', json('POST', body)),
+  series: (id: number) => request<{ series: SeriesInfo }>(`/api/series/${id}`).then((r) => r.series),
+  cancelSeries: (id: number, fromDate: string) =>
+    request<{ cancelled: number }>(`/api/series/${id}/cancel`, json('POST', { fromDate })),
+  splitSeries: (id: number, body: Omit<SeriesCreate, 'clientId' | 'startDate'> & { fromDate: string }) =>
+    request<SeriesResult>(`/api/series/${id}/split`, json('POST', body)),
+  copyWeek: (from: string, to: string) =>
+    request<{ created: number; skipped: string[] }>('/api/calendar/copy-week', json('POST', { from, to })),
 };

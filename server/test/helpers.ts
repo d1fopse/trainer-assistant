@@ -41,7 +41,7 @@ export async function createTestDb(prepare?: (pg: PGlite) => Promise<void>) {
   return {
     pg,
     db: db as unknown as Db,
-    reset: () => pg.exec('TRUNCATE users, clients, prices, settings RESTART IDENTITY CASCADE'),
+    reset: () => pg.exec('TRUNCATE users, clients, prices, settings, slots, series, bookings RESTART IDENTITY CASCADE'),
   };
 }
 
