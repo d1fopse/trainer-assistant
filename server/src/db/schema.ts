@@ -55,6 +55,8 @@ export const clients = pgTable('clients', {
     (): AnyPgColumn => clients.id,
     { onDelete: 'set null' },
   ),
+  /** Демо-дані для перевірки застосунку (видаляються однією кнопкою). */
+  isDemo: boolean('is_demo').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -70,6 +72,8 @@ export const prices = pgTable('prices', {
   sessionsCount: integer('sessions_count'),
   sortOrder: integer('sort_order').notNull().default(0),
   isVisible: boolean('is_visible').notNull().default(true),
+  /** Демо-дані для перевірки застосунку (видаляються однією кнопкою). */
+  isDemo: boolean('is_demo').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -110,6 +114,8 @@ export const slots = pgTable(
     status: slotStatusEnum('status').notNull().default('OPEN'),
     seriesId: integer('series_id').references(() => series.id, { onDelete: 'set null' }),
     note: text('note'),
+    /** Демо-дані для перевірки застосунку (видаляються однією кнопкою). */
+    isDemo: boolean('is_demo').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('slots_starts_at_idx').on(t.startsAt)],

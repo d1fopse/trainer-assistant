@@ -11,6 +11,7 @@ import { registerCalendarRoutes, type CalendarHooks } from './routes/calendar.js
 import { registerMoneyRoutes } from './routes/money.js';
 import { registerWaitlistRoutes } from './routes/waitlist.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
+import { registerDemoRoutes } from './routes/demo.js';
 import { Notifier } from './bot/notifier.js';
 import { Bot } from './bot/bot.js';
 import { registerWebhook } from './bot/webhook.js';
@@ -71,6 +72,7 @@ export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
     registerMoneyRoutes(api, db, hooks);
     registerWaitlistRoutes(api, db, notifier);
     registerAnalyticsRoutes(api, db, deps.now);
+    registerDemoRoutes(api, db, deps.now);
   });
 
   return app;

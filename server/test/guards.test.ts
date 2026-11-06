@@ -38,6 +38,9 @@ const TRAINER_ROUTES: [string, string][] = [
   ['DELETE', '/api/waitlist/1'],
   ['GET', '/api/settings'],
   ['PATCH', '/api/settings'],
+  ['GET', '/api/demo'],
+  ['POST', '/api/demo'],
+  ['DELETE', '/api/demo'],
 ];
 
 describe('route guards', () => {

@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
-import { moneyApi, waitlistApi, type BotSettings, type Lang, type Me } from '../api';
+import { demoApi, moneyApi, waitlistApi, type BotSettings, type Lang, type Me } from '../api';
 import { Icon } from '../icons';
-import { haptic, openChat } from '../telegram';
+import { confirmAction, haptic, openChat } from '../telegram';
 import { fmt, formatDuration, fromIso, now, timeRange } from '../time';
 import { Chip, Ev, Loading, PassLine, Screen, Section, Segmented, StreamNow, Switch, useLoad, type Tone } from '../ui';
 
@@ -59,6 +59,7 @@ export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => v
           </div>
         </div>
         {language}
+        <DemoData />
       </Screen>
     );
   }
@@ -248,6 +249,53 @@ function BotDay() {
       <p className="muted tiny" style={{ paddingBottom: 12 }}>
         {t('botSettings.startHint')}
       </p>
+    </Section>
+  );
+}
+
+/** Демо-дані: заповнити застосунок прикладами для перевірки або прибрати їх. */
+function DemoData() {
+  const { t } = useTranslation();
+  const { data, setData } = useLoad(() => demoApi.status(), []);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  if (!data) return null;
+
+  async function run(create: boolean) {
+    if (!(await confirmAction(t(create ? 'demo.confirmCreate' : 'demo.confirmRemove')))) return;
+    setBusy(true);
+    setFailed(false);
+    setNote(null);
+    try {
+      const r = create ? await demoApi.create() : await demoApi.remove();
+      setData({ exists: create });
+      setNote(t(create ? 'demo.created' : 'demo.removed', { clients: r.clients, slots: r.slots }));
+      haptic('success');
+    } catch {
+      setFailed(true);
+      haptic('error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title={t('demo.title')}>
+      <div className="stack" style={{ paddingBottom: 2 }}>
+        <p className="muted small">{t(data.exists ? 'demo.hintExists' : 'demo.hint')}</p>
+        {data.exists ? (
+          <button className="danger" disabled={busy} onClick={() => void run(false)}>
+            {t('demo.remove')}
+          </button>
+        ) : (
+          <button className="secondary" disabled={busy} onClick={() => void run(true)}>
+            {t('demo.create')}
+          </button>
+        )}
+        {note && <p className="ok-text small">{note}</p>}
+        {failed && <p className="error small">{t('errors.save')}</p>}
+      </div>
     </Section>
   );
 }

@@ -450,3 +450,13 @@ export type Analytics = {
 export const analyticsApi = {
   get: (from: string, to: string) => request<Analytics>(`/api/analytics?from=${from}&to=${to}`),
 };
+
+// ---------- Демо-дані ----------
+
+export type DemoResult = { clients: number; slots: number; prices: number; bookings?: number; payments?: number };
+
+export const demoApi = {
+  status: () => request<{ exists: boolean }>('/api/demo'),
+  create: () => request<DemoResult>('/api/demo', { method: 'POST' }),
+  remove: () => request<DemoResult>('/api/demo', { method: 'DELETE' }),
+};
