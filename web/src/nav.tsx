@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-export type Tab = 'calendar' | 'clients' | 'prices' | 'profile';
+export type Tab = 'calendar' | 'clients' | 'analytics' | 'prices' | 'profile';
 
 export type Route =
   | { name: 'calendar' }
@@ -8,6 +8,7 @@ export type Route =
   | { name: 'slotForm'; id?: number; date?: string }
   | { name: 'seriesForm'; seriesId: number; fromDate: string }
   | { name: 'clients' }
+  | { name: 'analytics' }
   | { name: 'prices' }
   | { name: 'profile' }
   | { name: 'client'; id: number }

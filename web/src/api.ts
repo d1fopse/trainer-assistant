@@ -407,3 +407,46 @@ export const waitlistApi = {
   saveSettings: (body: Partial<BotSettings>) =>
     request<{ settings: BotSettings }>('/api/settings', json('PATCH', body)).then((r) => r.settings),
 };
+
+// ---------- Аналітика (етап 6) ----------
+
+export type Analytics = {
+  period: { from: string; to: string };
+  income: {
+    total: number;
+    payments: number;
+    byPurpose: { purpose: PaymentPurpose; total: number }[];
+    byMethod: { method: PaymentMethod; total: number }[];
+    byMonth: { month: string; total: number }[];
+  };
+  load: {
+    slots: number;
+    emptySlots: number;
+    seats: number;
+    booked: number;
+    rate: number | null;
+    byWeekday: { weekday: number; slots: number; seats: number; booked: number }[];
+  };
+  attendance: {
+    attended: number;
+    noShows: number;
+    cancelled: number;
+    unmarked: number;
+    rate: number | null;
+    perClient: { clientId: number; name: string; attended: number; noShows: number; cancelled: number; rate: number | null }[];
+  };
+  trials: {
+    total: number;
+    attended: number;
+    converted: number;
+    rate: number | null;
+    list: { clientId: number; name: string; at: string; status: BookingStatus; converted: boolean }[];
+  };
+  endingPasses: { clientId: number; name: string; remaining: number; expiresAt: string | null }[];
+  newClients: number;
+  unpaidVisits: number;
+};
+
+export const analyticsApi = {
+  get: (from: string, to: string) => request<Analytics>(`/api/analytics?from=${from}&to=${to}`),
+};

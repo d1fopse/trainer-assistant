@@ -29,7 +29,8 @@
     "clients": "Клиенты",
     "prices": "Цены",
     "profile": "Профиль",
-    "calendar": "Календарь"
+    "calendar": "Календарь",
+    "analytics": "Аналитика"
   },
   "home": {
     "greeting": "Привет, {{name}}!",
@@ -384,5 +385,51 @@
     "reminders": "Напоминания клиентам за 3 часа до занятия",
     "hint": "Рассылка — в боте командой /broadcast. Чтобы получать план дня, нажмите /start в боте.",
     "saved": "Сохранено"
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "period": {
+      "month": "Этот месяц",
+      "prev": "Прошлый",
+      "quarter": "3 мес.",
+      "year": "Год"
+    },
+    "income": "Доход",
+    "payments_one": "{{count}} платёж",
+    "payments_few": "{{count}} платежа",
+    "payments_many": "{{count}} платежей",
+    "payments_other": "{{count}} платежа",
+    "load": "Загрузка",
+    "seats": "{{booked}} из {{seats}} мест",
+    "attendance": "Посещаемость",
+    "attendedOf": "пришли {{attended}} · неявок {{noShows}}",
+    "trialConversion": "Пробные → абонемент",
+    "trialsOf": "{{converted}} из {{total}}",
+    "unmarked_one": "{{count}} прошедшее занятие без отметки — отметьте в календаре.",
+    "unmarked_few": "{{count}} прошедших занятия без отметки — отметьте в календаре.",
+    "unmarked_many": "{{count}} прошедших занятий без отметки — отметьте в календаре.",
+    "unmarked_other": "{{count}} прошедших занятия без отметки — отметьте в календаре.",
+    "unpaid_one": "{{count}} посещение без абонемента (всего).",
+    "unpaid_few": "{{count}} посещения без абонемента (всего).",
+    "unpaid_many": "{{count}} посещений без абонемента (всего).",
+    "unpaid_other": "{{count}} посещения без абонемента (всего).",
+    "incomeByMonth": "Доход за 12 месяцев",
+    "loadByWeekday": "Загрузка по дням недели",
+    "emptySlots_one": "{{count}} пустой слот",
+    "emptySlots_few": "{{count}} пустых слота",
+    "emptySlots_many": "{{count}} пустых слотов",
+    "emptySlots_other": "{{count}} пустых слота",
+    "byClient": "Посещаемость клиентов",
+    "client": "Клиент",
+    "noData": "За этот период занятий не было.",
+    "endingPasses": "Абонементы заканчиваются",
+    "noEnding": "Нет заканчивающихся абонементов.",
+    "trials": "Пробные занятия",
+    "converted": "купил абонемент",
+    "notConverted": "без абонемента",
+    "newClients_one": "Новых клиентов за период: {{count}}",
+    "newClients_few": "Новых клиентов за период: {{count}}",
+    "newClients_many": "Новых клиентов за период: {{count}}",
+    "newClients_other": "Новых клиентов за период: {{count}}"
   }
 }
