@@ -20,7 +20,7 @@ describe('Telegram API client', () => {
 
   it('throws TelegramError and recognises blocked users', async () => {
     const f = fakeFetch([{ ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' }]);
-    const err = await createTelegramApi('t', f.impl).call('sendMessage', {}).catch((e) => e);
+    const err = (await createTelegramApi('t', f.impl).call('sendMessage', {}).catch((e: unknown) => e)) as TelegramError;
     expect(err).toBeInstanceOf(TelegramError);
     expect(err.isBlocked).toBe(true);
   });
