@@ -40,7 +40,7 @@ web/      React + Vite — інтерфейс Mini App
 ```bash
 npm install
 cp server/.env.example server/.env   # заповнити
-npm run db:migrate -w server
+npm run db:push -w server
 npm run dev:server
 npm run dev:web
 ```
