@@ -29,6 +29,10 @@ export const users = pgTable('users', {
   language: languageEnum('language').notNull().default('uk'),
   firstName: text('first_name'),
   username: text('username'),
+  /** Коли користувач натиснув /start у боті (бот може йому писати). */
+  botStartedAt: timestamp('bot_started_at', { withTimezone: true }),
+  /** Коли Telegram відмовив у доставці (користувач заблокував бота). */
+  botBlockedAt: timestamp('bot_blocked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -198,6 +202,53 @@ export const auditLog = pgTable(
   },
   (t) => [index('audit_client_idx').on(t.clientId)],
 );
+
+export const waitlistStatusEnum = pgEnum('waitlist_status', ['WAITING', 'NOTIFIED', 'REMOVED']);
+
+/** Лист очікування на зайнятий слот. */
+export const waitlist = pgTable(
+  'waitlist',
+  {
+    id: serial('id').primaryKey(),
+    slotId: integer('slot_id')
+      .notNull()
+      .references(() => slots.id, { onDelete: 'cascade' }),
+    clientId: integer('client_id')
+      .notNull()
+      .references(() => clients.id, { onDelete: 'cascade' }),
+    status: waitlistStatusEnum('status').notNull().default('WAITING'),
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('waitlist_active_unique')
+      .on(t.slotId, t.clientId)
+      .where(sql`${t.status} <> 'REMOVED'`),
+  ],
+);
+
+/** Журнал надісланих ботом повідомлень — щоб не надсилати двічі. */
+export const notificationsLog = pgTable('notifications_log', {
+  id: serial('id').primaryKey(),
+  /** Унікальний ключ: reminder:<bookingId>, summary:<date>:<chatId>, waitlist:<entryId>. */
+  key: text('key').notNull().unique(),
+  type: text('type').notNull(),
+  ok: boolean('ok').notNull().default(true),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Розсилки тренера. Вміст копіюється з повідомлення тренера (текст, фото, відео…). */
+export const broadcasts = pgTable('broadcasts', {
+  id: serial('id').primaryKey(),
+  sourceChatId: bigint('source_chat_id', { mode: 'bigint' }).notNull(),
+  sourceMessageId: integer('source_message_id').notNull(),
+  audience: text('audience').notNull(),
+  recipients: integer('recipients').notNull().default(0),
+  delivered: integer('delivered').notNull().default(0),
+  failed: integer('failed').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+});
 
 export type User = typeof users.$inferSelect;
 export type Client = typeof clients.$inferSelect;

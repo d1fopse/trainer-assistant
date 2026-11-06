@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { calendarApi, type BookingStatus, type TrainerSlot } from '../api';
+import { calendarApi, waitlistApi, type BookingStatus, type TrainerSlot, type WaitlistEntry } from '../api';
 import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic } from '../telegram';
@@ -44,7 +44,10 @@ export function SlotScreen({ id }: { id: number }) {
     setError(null);
     try {
       const r = await action();
-      if (r) setData(r);
+      if (r) {
+        setData({ ...r, waitlist: slot?.waitlist });
+        void reload(); // підтягнути актуальну чергу
+      }
       haptic('success');
     } catch (e) {
       setError(errorText(e, t));
@@ -67,12 +70,29 @@ export function SlotScreen({ id }: { id: number }) {
     setNotice(null);
     try {
       const r = await calendarApi.mark(bookingId, status, deduct);
-      setData(r.slot);
+      setData({ ...r.slot, waitlist: slot?.waitlist });
+      void reload();
       if (r.warning === 'no_active_pass') setNotice(t('mark.noPassWarning'));
       haptic(r.warning ? 'warning' : 'success');
     } catch (e) {
       setError(errorText(e, t));
       haptic('error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function waitlistAction(action: () => Promise<{ waitlist: WaitlistEntry[]; delivered?: boolean }>) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await action();
+      setData({ ...slot!, waitlist: r.waitlist });
+      if (r.delivered === false) setNotice(t('waitlist.notDelivered'));
+      haptic('success');
+    } catch (e) {
+      setError(errorText(e, t));
     } finally {
       setBusy(false);
     }
@@ -135,6 +155,29 @@ export function SlotScreen({ id }: { id: number }) {
           ))
         )}
       </Section>
+
+      {(slot.waitlist?.length ?? 0) > 0 && (
+        <Section title={t('waitlist.title')} hint={t('waitlist.hint')}>
+          {slot.waitlist!.map((w, i) => (
+            <div key={w.id} className="booking-row">
+              <span className="muted small">{i + 1}.</span>
+              <button className="link-button" onClick={() => nav.push({ name: 'client', id: w.clientId })}>
+                {w.name}
+              </button>
+              <span className={`status-chip ${w.status === 'NOTIFIED' ? 'ok' : 'muted'}`}>
+                {w.status === 'NOTIFIED' ? t('waitlist.notified') : t('waitlist.waiting')}
+              </span>
+              <span className="spacer" />
+              <button className="small-button secondary" disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.notify(w.id))}>
+                {t('waitlist.notify')}
+              </button>
+              <button className="icon-button" aria-label={t('common.delete')} disabled={busy} onClick={() => void waitlistAction(() => waitlistApi.remove(w.id))}>
+                ×
+              </button>
+            </div>
+          ))}
+        </Section>
+      )}
 
       {free > 0 && (
         <Section title={t('slot.addParticipant')}>

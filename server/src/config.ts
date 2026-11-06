@@ -15,6 +15,9 @@ const schema = z.object({
     .transform((v) => v === 'true'),
   /** Максимальний вік підпису initData, секунд. */
   INIT_DATA_MAX_AGE_SEC: z.coerce.number().default(24 * 60 * 60),
+  /** Публічна адреса сервера для webhook бота. На Railway береться з RAILWAY_PUBLIC_DOMAIN. */
+  PUBLIC_URL: z.string().optional(),
+  RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
 });
 
 export type Config = {
@@ -26,6 +29,8 @@ export type Config = {
   webOrigin: string;
   devAuthBypass: boolean;
   initDataMaxAgeSec: number;
+  /** https://… адреса сервера або null (тоді бот не налаштовує webhook). */
+  publicUrl: string | null;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -47,5 +52,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     webOrigin: e.WEB_ORIGIN,
     devAuthBypass: e.DEV_AUTH_BYPASS,
     initDataMaxAgeSec: e.INIT_DATA_MAX_AGE_SEC,
+    publicUrl:
+      e.PUBLIC_URL?.replace(/\/$/, '') || (e.RAILWAY_PUBLIC_DOMAIN ? `https://${e.RAILWAY_PUBLIC_DOMAIN}` : null),
   };
 }

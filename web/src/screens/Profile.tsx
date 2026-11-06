@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { moneyApi, type Lang, type Me } from '../api';
+import { useState } from 'react';
+import { moneyApi, waitlistApi, type BotSettings, type Lang, type Me } from '../api';
+import { haptic } from '../telegram';
 import { fmt, fromIso, timeRange } from '../time';
 import { InfoRow, Loading, Screen, Section, useLoad } from '../ui';
 
@@ -18,6 +20,7 @@ export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => v
 
       {role === 'GUEST' && <p className="muted">{t('home.guestWaiting')}</p>}
       {role === 'TRAINER' && <p className="muted">{t('home.trainerHint')}</p>}
+      {role === 'TRAINER' && <BotSettingsSection />}
 
       {role !== 'TRAINER' && me.client && <MyTrainings />}
 
@@ -90,5 +93,37 @@ function MyTrainings() {
         </Section>
       )}
     </>
+  );
+}
+
+function BotSettingsSection() {
+  const { t } = useTranslation();
+  const { data, setData } = useLoad<BotSettings>(() => waitlistApi.settings(), []);
+  const [saved, setSaved] = useState(false);
+  if (!data) return <Loading />;
+
+  async function save(patch: Partial<BotSettings>) {
+    setSaved(false);
+    const next = await waitlistApi.saveSettings(patch);
+    setData(next);
+    setSaved(true);
+    haptic('success');
+  }
+
+  return (
+    <Section title={t('botSettings.title')}>
+      <div className="stack">
+        <label>
+          {t('botSettings.summaryTime')}
+          <input type="time" value={data.dailySummaryTime} onChange={(e) => e.target.value && void save({ dailySummaryTime: e.target.value })} />
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={data.remindersEnabled} onChange={(e) => void save({ remindersEnabled: e.target.checked })} />
+          <span>{t('botSettings.reminders')}</span>
+        </label>
+        <p className="muted small">{t('botSettings.hint')}</p>
+        {saved && <p className="ok-text small">{t('botSettings.saved')}</p>}
+      </div>
+    </Section>
   );
 }

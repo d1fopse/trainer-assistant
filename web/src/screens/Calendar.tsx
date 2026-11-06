@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DateTime } from 'luxon';
-import { calendarApi, type PublicSlot, type TrainerSlot } from '../api';
+import { calendarApi, waitlistApi, type PublicSlot, type TrainerSlot } from '../api';
+import { errorText } from '../errors';
 import { useNav } from '../nav';
 import { confirmAction, haptic, openChat } from '../telegram';
 import { fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
@@ -11,9 +12,9 @@ import { Loading, LoadError, Screen, useLoad } from '../ui';
 let lastWeek: DateTime | null = null;
 let lastDay: string | null = null;
 
-type Props = { isTrainer: boolean; trainerUsername: string | null };
+type Props = { isTrainer: boolean; canWaitlist: boolean; trainerUsername: string | null };
 
-export function Calendar({ isTrainer, trainerUsername }: Props) {
+export function Calendar({ isTrainer, canWaitlist, trainerUsername }: Props) {
   const { t, i18n } = useTranslation();
   const nav = useNav();
   const lang = i18n.language;
@@ -27,7 +28,7 @@ export function Calendar({ isTrainer, trainerUsername }: Props) {
 
   const from = week.toISO()!;
   const to = week.plus({ days: 7 }).toISO()!;
-  const { data, failed, reload } = useLoad<(TrainerSlot | PublicSlot)[]>(
+  const { data, setData, failed, reload } = useLoad<(TrainerSlot | PublicSlot)[]>(
     () => (isTrainer ? calendarApi.trainerRange(from, to) : calendarApi.publicRange(from, to)),
     [from, isTrainer],
   );
@@ -129,7 +130,12 @@ export function Calendar({ isTrainer, trainerUsername }: Props) {
             isTrainer ? (
               <TrainerSlotCard key={s.id} slot={s as TrainerSlot} onOpen={() => nav.push({ name: 'slot', id: s.id })} />
             ) : (
-              <PublicSlotCard key={s.id} slot={s as PublicSlot} />
+              <PublicSlotCard
+                key={s.id}
+                slot={s as PublicSlot}
+                canWaitlist={canWaitlist}
+                onChange={(next) => setData((data ?? []).map((x) => (x.id === next.id ? next : x)))}
+              />
             ),
           )}
         </div>
@@ -192,8 +198,38 @@ function TrainerSlotCard({ slot, onOpen }: { slot: TrainerSlot; onOpen: () => vo
   );
 }
 
-function PublicSlotCard({ slot }: { slot: PublicSlot }) {
+function PublicSlotCard({
+  slot,
+  canWaitlist,
+  onChange,
+}: {
+  slot: PublicSlot;
+  canWaitlist: boolean;
+  onChange: (s: PublicSlot) => void;
+}) {
   const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const future = new Date(slot.startsAt).getTime() > Date.now();
+  // 🔔 — лише клієнтам, на зайнятий майбутній слот, де вони не записані.
+  const showBell = canWaitlist && future && !slot.mine && slot.freeSeats === 0;
+
+  async function toggleBell() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (slot.waiting) await waitlistApi.leave(slot.id);
+      else await waitlistApi.join(slot.id);
+      haptic('success');
+      onChange({ ...slot, waiting: !slot.waiting });
+    } catch (e) {
+      setError(errorText(e, t));
+      haptic('error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   let label: string;
   let cls: string;
   if (slot.mine) {
@@ -215,7 +251,21 @@ function PublicSlotCard({ slot }: { slot: PublicSlot }) {
       <div className="slot-main">
         <span className="muted small">{t(`calendar.type.${slot.type}`)}</span>
         <span className="slot-state">{label}</span>
+        {slot.waiting && showBell && <span className="small link-text">{t('waitlist.youAreWaiting')}</span>}
+        {error && <span className="error small">{error}</span>}
       </div>
+      {showBell && (
+        <button
+          className={`bell${slot.waiting ? ' on' : ''}`}
+          aria-pressed={slot.waiting}
+          aria-label={slot.waiting ? t('waitlist.leave') : t('waitlist.join')}
+          title={slot.waiting ? t('waitlist.leave') : t('waitlist.join')}
+          disabled={busy}
+          onClick={() => void toggleBell()}
+        >
+          🔔
+        </button>
+      )}
     </div>
   );
 }

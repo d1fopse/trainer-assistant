@@ -187,6 +187,8 @@ export type TrainerSlot = {
   note: string | null;
   bookings: SlotBooking[];
   bookedCount: number;
+  /** Лише в деталях слота. */
+  waitlist?: WaitlistEntry[];
 };
 
 export type PublicSlot = {
@@ -197,6 +199,7 @@ export type PublicSlot = {
   capacity: number;
   freeSeats: number;
   mine: boolean;
+  waiting: boolean;
 };
 
 export type SeriesInfo = {
@@ -379,4 +382,28 @@ export const moneyApi = {
   applyUnpaid: (clientId: number) =>
     request<{ applied: number; summary: ClientSummary }>(`/api/clients/${clientId}/apply-unpaid`, { method: 'POST' }),
   mySummary: () => request<MySummary>('/api/me/summary'),
+};
+
+// ---------- Лист очікування та налаштування бота (етап 5) ----------
+
+export type WaitlistEntry = {
+  id: number;
+  clientId: number;
+  name: string;
+  status: 'WAITING' | 'NOTIFIED';
+  notifiedAt: string | null;
+  createdAt: string;
+};
+
+export type BotSettings = { dailySummaryTime: string; remindersEnabled: boolean };
+
+export const waitlistApi = {
+  join: (slotId: number) => request<{ waiting: true }>(`/api/slots/${slotId}/waitlist`, { method: 'POST' }),
+  leave: (slotId: number) => request<{ waiting: false }>(`/api/slots/${slotId}/waitlist`, { method: 'DELETE' }),
+  notify: (entryId: number) =>
+    request<{ delivered: boolean; waitlist: WaitlistEntry[] }>(`/api/waitlist/${entryId}/notify`, { method: 'POST' }),
+  remove: (entryId: number) => request<{ waitlist: WaitlistEntry[] }>(`/api/waitlist/${entryId}`, { method: 'DELETE' }),
+  settings: () => request<{ settings: BotSettings }>('/api/settings').then((r) => r.settings),
+  saveSettings: (body: Partial<BotSettings>) =>
+    request<{ settings: BotSettings }>('/api/settings', json('PATCH', body)).then((r) => r.settings),
 };

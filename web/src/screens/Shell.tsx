@@ -84,7 +84,7 @@ function renderRoute(route: Route, me: Me, onLanguage: (l: Lang) => void) {
   const isTrainer = me.user.role === 'TRAINER';
   switch (route.name) {
     case 'calendar':
-      return <Calendar isTrainer={isTrainer} trainerUsername={me.trainerUsername} />;
+      return <Calendar isTrainer={isTrainer} canWaitlist={me.user.role === 'CLIENT'} trainerUsername={me.trainerUsername} />;
     case 'slot':
       return isTrainer ? <SlotScreen id={route.id} /> : null;
     case 'slotForm':

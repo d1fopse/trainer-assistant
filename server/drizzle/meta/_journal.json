@@ -22,6 +22,13 @@
       "when": 1793975619941,
       "tag": "0002_money",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793976127008,
+      "tag": "0003_bot",
+      "breakpoints": true
     }
   ]
 }

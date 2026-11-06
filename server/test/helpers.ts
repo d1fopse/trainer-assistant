@@ -2,7 +2,8 @@ import { createHmac } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
-import { buildApp } from '../src/app.js';
+import { buildApp, type AppDeps } from '../src/app.js';
+import { TelegramError, type TelegramApi } from '../src/bot/telegram.js';
 import { loadConfig } from '../src/config.js';
 import { migrationsFolder, schema, type Db } from '../src/db/index.js';
 
@@ -41,7 +42,7 @@ export async function createTestDb(prepare?: (pg: PGlite) => Promise<void>) {
   return {
     pg,
     db: db as unknown as Db,
-    reset: () => pg.exec('TRUNCATE users, clients, prices, settings, slots, series, bookings, passes, payments, audit_log RESTART IDENTITY CASCADE'),
+    reset: () => pg.exec('TRUNCATE users, clients, prices, settings, slots, series, bookings, passes, payments, audit_log, waitlist, notifications_log, broadcasts RESTART IDENTITY CASCADE'),
   };
 }
 
@@ -61,9 +62,36 @@ export function authAs(id: number, extra: Record<string, unknown> = {}) {
 }
 
 /** Додаток + зручні запити від імені користувача з Telegram ID. */
-export async function createTestApp(db: Db) {
-  const app = await buildApp(testConfig, db);
+/** profiles — додаткові поля Telegram-профілю для окремих ID (наприклад, username тренера). */
+export async function createTestApp(db: Db, deps: AppDeps = {}, profiles: Record<number, Record<string, unknown>> = {}) {
+  const app = await buildApp(testConfig, db, deps);
   const call = (id: number, method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', url: string, payload?: unknown) =>
-    app.inject({ method, url, headers: authAs(id), payload: payload as never });
+    app.inject({ method, url, headers: authAs(id, profiles[id]), payload: payload as never });
   return { app, call };
+}
+
+/** Фейковий Telegram Bot API: записує виклики, вміє «блокувати» окремі чати. */
+export class FakeTelegram implements TelegramApi {
+  calls: { method: string; params: Record<string, unknown> }[] = [];
+  blocked = new Set<string>();
+  private nextMessageId = 1000;
+
+  async call<T>(method: string, params: Record<string, unknown>): Promise<T> {
+    this.calls.push({ method, params });
+    const chat = params.chat_id === undefined ? undefined : String(params.chat_id);
+    if (chat && this.blocked.has(chat)) throw new TelegramError(method, 403, 'Forbidden: bot was blocked by the user');
+    return { message_id: this.nextMessageId++ } as T;
+  }
+
+  sent(method = 'sendMessage') {
+    return this.calls.filter((c) => c.method === method);
+  }
+
+  to(chatId: number | string, method = 'sendMessage') {
+    return this.sent(method).filter((c) => String(c.params.chat_id) === String(chatId));
+  }
+
+  clear() {
+    this.calls = [];
+  }
 }

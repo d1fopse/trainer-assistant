@@ -17,6 +17,7 @@ import {
   kyivToDate,
 } from '../time.js';
 import { idParam } from './validation.js';
+import { loadWaitlist, myWaitlistSlotIds } from './waitlist.js';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 export type Q = Db | Tx;
@@ -232,6 +233,7 @@ export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: Cale
     if (u.role === 'TRAINER') return { slots: list };
 
     const myClientId = u.client?.id ?? null;
+    const waiting = myClientId ? await myWaitlistSlotIds(db, myClientId, list.map((s) => s.id)) : new Set<number>();
     return {
       slots: list.map((s) => {
         const mine = s.bookings.find((b) => b.clientId === myClientId);
@@ -243,6 +245,7 @@ export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: Cale
           capacity: s.capacity,
           freeSeats: Math.max(0, s.capacity - s.bookedCount),
           mine: Boolean(mine),
+          waiting: waiting.has(s.id),
         };
       }),
     };
@@ -250,7 +253,7 @@ export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: Cale
 
   app.get('/api/slots/:id', trainerOnly, async (req) => {
     const { id } = parse(idParam, req.params, 'invalid_id');
-    return { slot: await loadTrainerSlot(db, id) };
+    return { slot: { ...(await loadTrainerSlot(db, id)), waitlist: await loadWaitlist(db, id) } };
   });
 
   app.post('/api/slots', trainerOnly, async (req, reply) => {
