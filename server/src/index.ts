@@ -1,6 +1,7 @@
 import { loadConfig } from './config.js';
 import { connectDb } from './db/index.js';
 import { buildApp } from './app.js';
+import { seedDemoOnStart } from './routes/demo.js';
 import { createTelegramApi } from './bot/telegram.js';
 import { WEBHOOK_PATH, webhookSecret } from './bot/webhook.js';
 
@@ -9,6 +10,17 @@ const config = loadConfig();
 const { db } = await connectDb(config.databaseUrl);
 const tg = createTelegramApi(config.botToken);
 const app = await buildApp(config, db, { tg });
+
+// Разове заповнення демо-даними при старті (DEMO_SEED=large|small), якщо їх ще немає.
+const demoSeed = process.env.DEMO_SEED;
+if (demoSeed === 'large' || demoSeed === 'small') {
+  try {
+    const r = await seedDemoOnStart(db, demoSeed, new Date());
+    app.log.info({ demo: r }, 'demo seed');
+  } catch (e) {
+    app.log.error(e, 'demo seed failed');
+  }
+}
 
 try {
   await app.listen({ port: config.port, host: '0.0.0.0' });

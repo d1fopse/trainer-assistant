@@ -18,14 +18,14 @@ describe('demo data', () => {
     await call(TRAINER_ID, 'POST', '/api/clients', { name: 'Справжній клієнт', status: 'ACTIVE' });
     expect((await call(TRAINER_ID, 'GET', '/api/demo')).json()).toEqual({ exists: false });
 
-    const res = await call(TRAINER_ID, 'POST', '/api/demo');
+    const res = await call(TRAINER_ID, 'POST', '/api/demo', { size: 'small' });
     expect(res.statusCode).toBe(200);
     const made = res.json();
     expect(made.clients).toBe(8);
     expect(made.prices).toBe(0);
     expect(made.slots).toBeGreaterThan(70);
     expect((await call(TRAINER_ID, 'GET', '/api/demo')).json()).toEqual({ exists: true });
-    expect((await call(TRAINER_ID, 'POST', '/api/demo')).statusCode).toBe(409);
+    expect((await call(TRAINER_ID, 'POST', '/api/demo', { size: 'small' })).statusCode).toBe(409);
 
     const active = (await call(TRAINER_ID, 'GET', '/api/clients?status=ACTIVE')).json().clients as { id: number; name: string; remaining: number | null }[];
     const by = Object.fromEntries(active.map((c) => [c.name, c]));
@@ -58,9 +58,33 @@ describe('demo data', () => {
 
   it('adds demo prices when the trainer has none, and removes them', async () => {
     await t.reset();
-    expect((await call(TRAINER_ID, 'POST', '/api/demo')).json().prices).toBe(5);
+    expect((await call(TRAINER_ID, 'POST', '/api/demo', { size: 'small' })).json().prices).toBe(5);
     expect((await call(TRAINER_ID, 'GET', '/api/prices')).json().prices).toHaveLength(5);
     await call(TRAINER_ID, 'DELETE', '/api/demo');
     expect((await call(TRAINER_ID, 'GET', '/api/prices')).json().prices).toHaveLength(0);
+  });
+
+  it('large set: many clients, consistent passes, removable', async () => {
+    await t.reset();
+    const r = (await call(TRAINER_ID, 'POST', '/api/demo')).json();
+    expect(r.clients).toBe(42);
+    expect(r.slots).toBeGreaterThan(400);
+    expect(r.bookings).toBeGreaterThan(500);
+    expect(r.passes).toBeGreaterThan(20);
+    const list = (await call(TRAINER_ID, 'GET', '/api/clients?status=ACTIVE')).json().clients as { id: number }[];
+    expect(list.length).toBe(32);
+    for (const c of list.slice(0, 8)) {
+      const h = (await call(TRAINER_ID, 'GET', `/api/clients/${c.id}/history`)).json();
+      for (const p of h.summary.passes) {
+        const used = h.visits.filter((v: { passId: number | null; deducted: boolean }) => v.passId === p.id && v.deducted).length;
+        expect(p.totalSessions - p.remaining).toBe(used);
+      }
+    }
+    const a = (await call(TRAINER_ID, 'GET', '/api/analytics?from=2026-08-01&to=2026-11-30')).json();
+    expect(a.attendance.attended).toBeGreaterThan(300);
+    expect(a.trials.total).toBeGreaterThan(5);
+    const del = (await call(TRAINER_ID, 'DELETE', '/api/demo')).json();
+    expect(del.clients).toBe(42);
+    expect((await call(TRAINER_ID, 'GET', '/api/clients?status=ACTIVE')).json().clients).toHaveLength(0);
   });
 });

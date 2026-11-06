@@ -6,6 +6,7 @@ import { HttpError } from '../http.js';
 import { bookings, clients, passes, payments, prices, slots, waitlist } from '../db/schema.js';
 import type { Db } from '../db/index.js';
 import { ZONE } from '../time.js';
+import { seedLarge } from './demoLarge.js';
 
 /**
  * Демо-дані для перевірки застосунку: клієнти, розклад за 3 тижні назад і 2 вперед,
@@ -19,21 +20,43 @@ export function registerDemoRoutes(app: FastifyInstance, db: Db, now: () => Date
     return { exists: Boolean(row) };
   });
 
-  app.post('/api/demo', { preHandler: requireTrainer }, async () => {
-    const [row] = await db.select({ id: clients.id }).from(clients).where(eq(clients.isDemo, true)).limit(1);
-    if (row) throw new HttpError(409, 'demo_exists');
-    return db.transaction((tx) => seed(tx as unknown as Db, now()));
+  app.post('/api/demo', { preHandler: requireTrainer }, async (req) => {
+    const size = (req.body as { size?: string } | undefined)?.size === 'small' ? 'small' : 'large';
+    const r = await seedDemo(db, size, now());
+    if (!r) throw new HttpError(409, 'demo_exists');
+    return r;
   });
 
-  app.delete('/api/demo', { preHandler: requireTrainer }, async () => {
-    return db.transaction(async (tx) => {
-      // Записи, платежі, абонементи, черга й журнал видаляються каскадом разом із клієнтами.
-      const c = await tx.delete(clients).where(eq(clients.isDemo, true)).returning({ id: clients.id });
-      const s = await tx.delete(slots).where(eq(slots.isDemo, true)).returning({ id: slots.id });
-      const p = await tx.delete(prices).where(eq(prices.isDemo, true)).returning({ id: prices.id });
-      return { clients: c.length, slots: s.length, prices: p.length };
-    });
+  app.delete('/api/demo', { preHandler: requireTrainer }, async () => removeDemo(db));
+}
+
+export async function removeDemo(db: Db) {
+  return db.transaction(async (tx) => {
+    // Записи, платежі, абонементи, черга й журнал видаляються каскадом разом із клієнтами.
+    const c = await tx.delete(clients).where(eq(clients.isDemo, true)).returning({ id: clients.id });
+    const s = await tx.delete(slots).where(eq(slots.isDemo, true)).returning({ id: slots.id });
+    const p = await tx.delete(prices).where(eq(prices.isDemo, true)).returning({ id: prices.id });
+    return { clients: c.length, slots: s.length, prices: p.length };
   });
+}
+
+/**
+ * Заповнення при старті сервера (змінна DEMO_SEED). Якщо вже є малий демо-набір —
+ * замінює його великим; якщо великий уже є — нічого не робить (безпечно при перезапусках).
+ */
+export async function seedDemoOnStart(db: Db, size: 'small' | 'large', now: Date) {
+  const demo = await db.select({ id: clients.id }).from(clients).where(eq(clients.isDemo, true));
+  const target = size === 'large' ? 40 : 8;
+  if (demo.length >= target) return { skipped: 'already present', clients: demo.length };
+  if (demo.length > 0) await removeDemo(db);
+  return seedDemo(db, size, now);
+}
+
+/** Заповнює демо-даними, якщо їх ще немає. null — демо вже є. */
+export async function seedDemo(db: Db, size: 'small' | 'large', now: Date) {
+  const [row] = await db.select({ id: clients.id }).from(clients).where(eq(clients.isDemo, true)).limit(1);
+  if (row) return null;
+  return db.transaction((tx) => (size === 'large' ? seedLarge(tx as unknown as Db, now) : seed(tx as unknown as Db, now)));
 }
 
 type Key = 'oleh' | 'anna' | 'iryna' | 'taras' | 'mariia' | 'dmytro' | 'kateryna' | 'serhii';
