@@ -12,9 +12,9 @@ import { Loading, LoadError, Screen, useLoad } from '../ui';
 let lastWeek: DateTime | null = null;
 let lastDay: string | null = null;
 
-type Props = { isTrainer: boolean; canWaitlist: boolean; trainerUsername: string | null };
+type Props = { isTrainer: boolean; canWaitlist: boolean; awaitingApproval?: boolean; trainerUsername: string | null };
 
-export function Calendar({ isTrainer, canWaitlist, trainerUsername }: Props) {
+export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUsername }: Props) {
   const { t, i18n } = useTranslation();
   const nav = useNav();
   const lang = i18n.language;
@@ -86,6 +86,8 @@ export function Calendar({ isTrainer, canWaitlist, trainerUsername }: Props) {
         )
       }
     >
+      {awaitingApproval && <p className="card notice">{t('home.guestWaiting')}</p>}
+
       <div className="week-nav">
         <button className="icon-button" aria-label={t('calendar.prevWeek')} onClick={() => shiftWeek(-1)}>
           ‹

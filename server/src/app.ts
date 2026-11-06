@@ -27,11 +27,18 @@ declare module 'fastify' {
   interface FastifyInstance {
     notifier: Notifier | null;
     bot: Bot | null;
+    /** Перелік зареєстрованих маршрутів «METHOD /url» (для тесту прав доступу). */
+    routeList: string[];
   }
 }
 
 export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
   const app = Fastify({ logger: config.nodeEnv !== 'test' });
+  const routeList: string[] = [];
+  app.decorate('routeList', routeList);
+  app.addHook('onRoute', (r) => {
+    for (const m of ([] as string[]).concat(r.method)) if (m !== 'HEAD' && m !== 'OPTIONS') routeList.push(`${m} ${r.url}`);
+  });
 
   const notifier = deps.tg ? new Notifier(db, deps.tg, config, deps.now, app.log) : null;
   const bot = deps.tg && notifier ? new Bot(db, deps.tg, config, notifier, app.log, deps.botSendDelayMs) : null;

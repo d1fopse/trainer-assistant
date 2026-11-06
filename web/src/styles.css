@@ -928,3 +928,9 @@ button.ok {
 .table tbody tr {
   cursor: pointer;
 }
+
+.card.notice {
+  margin: 0;
+  border-left: 3px solid var(--warn);
+  font-size: 14px;
+}
