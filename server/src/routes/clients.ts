@@ -125,6 +125,9 @@ export function registerClientRoutes(app: FastifyInstance, db: Db) {
     if (q) {
       const pattern = `%${q.replace(/[\\%_]/g, (m) => '\\' + m)}%`;
       const conds = [ilike(clients.name, pattern), ilike(clients.phone, pattern)];
+      // Юзернейм Telegram: «@oleg_k», «oleg» — без урахування регістру й «@».
+      const handle = q.trim().replace(/^@+/, '');
+      if (handle) conds.push(ilike(users.username, `%${handle.replace(/[\\%_]/g, (m) => '\\' + m)}%`));
       // Пошук за цифрами незалежно від пробілів: «0671234», «67 123», «380671…».
       const digits = q.replace(/\D/g, '').replace(/^380|^0/, '');
       if (digits.length >= 3) conds.push(sql`regexp_replace(${clients.phone}, '[^0-9]', '', 'g') like ${`%${digits}%`}`);

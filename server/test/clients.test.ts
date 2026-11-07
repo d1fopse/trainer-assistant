@@ -9,7 +9,7 @@ describe('clients (trainer CRM)', () => {
 
   beforeAll(async () => {
     t = await createTestDb();
-    ({ call } = await createTestApp(t.db));
+    ({ call } = await createTestApp(t.db, {}, { [GUEST]: { username: 'Oleg_K' } }));
   });
   beforeEach(() => t.reset());
   afterAll(() => t.pg.close());
@@ -57,6 +57,15 @@ describe('clients (trainer CRM)', () => {
     // Пошук за цифрами незалежно від запису.
     expect((await call(TRAINER_ID, 'GET', '/api/clients?q=0502222')).json().clients[0].name).toBe('Віра');
     expect((await call(TRAINER_ID, 'GET', `/api/clients?q=${encodeURIComponent('50 111')}`)).json().clients[0].name).toBe('Анна');
+  });
+
+  it('search by Telegram username, with or without @', async () => {
+    await call(GUEST, 'POST', '/api/onboarding', { name: 'Олег', goal: 'health', experience: 'none', consent: true });
+    await create({ name: 'Марія' });
+    for (const q of ['oleg_k', '@Oleg_K', 'leg']) {
+      const found = (await call(TRAINER_ID, 'GET', `/api/clients?q=${encodeURIComponent(q)}`)).json().clients;
+      expect(found.map((c: { name: string }) => c.name), q).toEqual(['Олег']);
+    }
   });
 
   it('stores every phone as +380 XX XXX XX XX', async () => {
