@@ -189,7 +189,11 @@ describe('bot: webhook, reminders, summary, waitlist, broadcasts', () => {
       // повторно — без помилки й без дубля
       expect((await call(BORYS, 'POST', `/api/slots/${full.id}/waitlist`)).statusCode).toBe(201);
 
+      // Клієнт бачить лише 4 тижні вперед — «переносимось» ближче до слота.
+      const saved = now;
+      now = new Date('2099-01-09T10:00:00Z');
       const cal = (await call(BORYS, 'GET', `/api/calendar?from=${encodeURIComponent('2099-01-10T00:00:00+02:00')}&to=${encodeURIComponent('2099-01-12T00:00:00+02:00')}`)).json().slots;
+      now = saved;
       expect(cal.find((s: { id: number }) => s.id === full.id)).toMatchObject({ freeSeats: 0, waiting: true });
 
       const trainerView = (await call(TRAINER_ID, 'GET', `/api/slots/${full.id}`)).json().slot;
