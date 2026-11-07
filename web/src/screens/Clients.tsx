@@ -36,6 +36,9 @@ export function Clients() {
   // Кількість нових заявок — для бейджа на фільтрі.
   const guests = useLoad(() => api.clients({ status: 'GUEST' }), []);
   const guestCount = guests.data?.length ?? 0;
+  // Скільки всього активних (без урахування пошуку) — поруч із «Активні».
+  const actives = useLoad(() => api.clients({ status: 'ACTIVE' }), []);
+  const activeCount = actives.data?.length;
 
   return (
     <Screen
@@ -51,7 +54,10 @@ export function Clients() {
         onChange={setFilter}
         options={[
           { value: 'GUEST', label: t('clients.filter.GUEST'), badge: guestCount },
-          { value: 'ACTIVE', label: t('clients.filter.ACTIVE') },
+          {
+            value: 'ACTIVE',
+            label: activeCount === undefined ? t('clients.filter.ACTIVE') : `${t('clients.filter.ACTIVE')} · ${activeCount}`,
+          },
           { value: 'INACTIVE', label: t('clients.filter.INACTIVE') },
         ]}
       />
