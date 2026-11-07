@@ -87,6 +87,12 @@ describe('calendar', () => {
       const seen = (await call(who, 'GET', all)).json().slots.map((s: { startsAt: string }) => s.startsAt);
       expect(seen).toEqual(['2026-11-06T06:00:00.000Z', '2026-11-10T08:00:00.000Z']);
     }
+    // Не далі ніж на 4 тижні вперед: 4 грудня (сьогодні + 28) видно, 5 грудня — ні.
+    await slot({ startsAt: '2026-12-04T20:00:00+02:00', durationMin: 60, type: 'INDIVIDUAL' });
+    await slot({ startsAt: '2026-12-05T09:00:00+02:00', durationMin: 60, type: 'INDIVIDUAL' });
+    const ahead = range('2026-11-30T00:00:00+02:00', '2026-12-07T00:00:00+02:00');
+    expect((await call(CLIENT_A, 'GET', ahead)).json().slots.map((s: { startsAt: string }) => s.startsAt)).toEqual(['2026-12-04T18:00:00.000Z']);
+    expect((await call(TRAINER_ID, 'GET', ahead)).json().slots).toHaveLength(2);
     // Запит лише минулого тижня — порожньо.
     expect((await call(CLIENT_A, 'GET', range('2026-10-26T00:00:00+02:00', '2026-11-02T00:00:00+02:00'))).json().slots).toEqual([]);
   });

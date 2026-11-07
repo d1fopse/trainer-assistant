@@ -215,6 +215,9 @@ function validateSeriesSpan(startDate: string, endDate: string) {
   if (span > MAX_SERIES_DAYS) throw new HttpError(400, 'series_too_long');
 }
 
+/** Скільки днів уперед бачать клієнти й гості (4 тижні; сьогодні + 28 днів). */
+export const PUBLIC_DAYS_AHEAD = 28;
+
 export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: CalendarHooks = {}, now: () => Date = () => new Date()) {
   const trainerOnly = { preHandler: requireTrainer };
 
@@ -228,12 +231,17 @@ export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: Cale
       throw new HttpError(400, 'invalid_range');
     }
     const u = req.authUser!;
-    const today = kyivDayStart(kyivDate(now()));
-    const from = u.role === 'TRAINER' || requested >= today ? requested : today;
-    if (from >= to) return { slots: [] };
-    const where = and(eq(slots.status, 'OPEN'), gte(slots.startsAt, from), lt(slots.startsAt, to));
+    // Клієнти й гості бачать лише від сьогодні до PUBLIC_DAYS_AHEAD днів уперед.
+    const todayIso = kyivDate(now());
+    const today = kyivDayStart(todayIso);
+    const limit = kyivDayStart(addDays(todayIso, PUBLIC_DAYS_AHEAD + 1));
+    const trainer = u.role === 'TRAINER';
+    const from = trainer || requested >= today ? requested : today;
+    const until = trainer || to <= limit ? to : limit;
+    if (from >= until) return { slots: [] };
+    const where = and(eq(slots.status, 'OPEN'), gte(slots.startsAt, from), lt(slots.startsAt, until));
     const list = await loadTrainerSlots(db, where);
-    if (u.role === 'TRAINER') return { slots: list };
+    if (trainer) return { slots: list };
 
     const myClientId = u.client?.id ?? null;
     const waiting = myClientId ? await myWaitlistSlotIds(db, myClientId, list.map((s) => s.id)) : new Set<number>();

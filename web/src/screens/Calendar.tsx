@@ -10,6 +10,10 @@ import { fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
 import { Loading, LoadError, Screen, Stat, TimedNotice, useLoad } from '../ui';
 import { DayScale, Seats, type ScaleItem } from './DayScale';
 
+/** Скільки днів уперед бачать клієнти й гості (як PUBLIC_DAYS_AHEAD на сервері). */
+const PUBLIC_DAYS_AHEAD = 28;
+const lastVisibleDay = () => isoDate(now().plus({ days: PUBLIC_DAYS_AHEAD }));
+
 // Обраний тиждень і день зберігаються, поки відкритий додаток.
 let lastWeek: DateTime | null = null;
 let lastDay: string | null = null;
@@ -27,9 +31,9 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
   const lang = i18n.language;
   const today = isoDate(now());
   const [week, setWeek] = useState<DateTime>(() =>
-    lastWeek && (isTrainer || isoDate(lastWeek) >= isoDate(weekStart(now()))) ? lastWeek : weekStart(now()),
+    lastWeek && (isTrainer || (isoDate(lastWeek) >= isoDate(weekStart(now())) && isoDate(lastWeek) <= lastVisibleDay())) ? lastWeek : weekStart(now()),
   );
-  const [day, setDay] = useState<string>(() => (lastDay && (isTrainer || lastDay >= today) ? lastDay : today));
+  const [day, setDay] = useState<string>(() => (lastDay && (isTrainer || (lastDay >= today && lastDay <= lastVisibleDay())) ? lastDay : today));
   const [copying, setCopying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [bellError, setBellError] = useState<string | null>(null);
@@ -60,10 +64,13 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
     // Переходимо на той самий день тижня.
     const next = isoDate(w.plus({ days: Math.max(0, days.findIndex((d) => isoDate(d) === day)) }));
     // Клієнти й гості не бачать минулих днів.
-    setDay(!isTrainer && next < today ? today : next);
+    setDay(!isTrainer && next < today ? today : !isTrainer && next > lastVisibleDay() ? lastVisibleDay() : next);
   }
 
   const atCurrentWeek = isoDate(week) <= isoDate(weekStart(now()));
+  // Клієнти й гості бачать лише 4 тижні вперед (сьогодні + 28 днів; так само обмежує сервер).
+  const horizon = lastVisibleDay();
+  const atLastWeek = isoDate(week.plus({ weeks: 1 })) > horizon;
 
   function goToday() {
     setWeek(weekStart(now()));
@@ -135,7 +142,12 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
           {fmt(days[0]!, lang, 'd MMM')} – {fmt(days[6]!, lang, 'd MMM')}
           {isoDate(week) !== isoDate(weekStart(now())) && ` · ${t('calendar.today')}`}
         </button>
-        <button className="icon-button sm" aria-label={t('calendar.nextWeek')} onClick={() => shiftWeek(1)}>
+        <button
+          className="icon-button sm"
+          aria-label={t('calendar.nextWeek')}
+          disabled={!isTrainer && atLastWeek}
+          onClick={() => shiftWeek(1)}
+        >
           <Icon name="chevronRight" size={16} />
         </button>
       </div>
@@ -150,7 +162,7 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
               aria-current={k === today ? 'date' : undefined}
               aria-pressed={k === day}
               className={`day${k === day ? ' active' : ''}${k === today ? ' today' : ''}${k < today ? ' past' : ''}`}
-              disabled={!isTrainer && k < today}
+              disabled={!isTrainer && (k < today || k > horizon)}
               onClick={() => setDay(k)}
             >
               <span className="day-name">{fmt(d, lang, 'ccc')}</span>
