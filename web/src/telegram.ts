@@ -11,7 +11,10 @@ type TelegramWebApp = {
     onClick(cb: () => void): void;
     offClick(cb: () => void): void;
   };
-  HapticFeedback?: { notificationOccurred(type: 'success' | 'error' | 'warning'): void };
+  HapticFeedback?: {
+    notificationOccurred(type: 'success' | 'error' | 'warning'): void;
+    impactOccurred?(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void;
+  };
   setHeaderColor?(color: string): void;
   setBackgroundColor?(color: string): void;
   setBottomBarColor?(color: string): void;
@@ -208,6 +211,15 @@ export function confirmAction(message: string): Promise<boolean> {
 
 export function haptic(type: 'success' | 'error' | 'warning') {
   webApp?.HapticFeedback?.notificationOccurred(type);
+}
+
+/** Короткий «стук» — відгук на утримання пальця. */
+export function hapticImpact() {
+  try {
+    webApp?.HapticFeedback?.impactOccurred?.('medium');
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Системна кнопка «Назад» Telegram. Повертає функцію для зняття обробника. */

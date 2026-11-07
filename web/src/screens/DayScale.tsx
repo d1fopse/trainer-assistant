@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent } from 'react';
 import { fromIso, now } from '../time';
 
 export type ScaleKind = 'indiv' | 'group' | 'free' | 'busy' | 'mine' | 'cancelled';
@@ -25,7 +25,45 @@ const MIN_BLOCK = 44;
  * Слоти, що перетинаються в часі, стають поруч у колонках.
  * Для сьогоднішнього дня — червона лінія «зараз».
  */
-export function DayScale({ items, isToday, nowLabel }: { items: ScaleItem[]; isToday: boolean; nowLabel: string }) {
+const LONG_PRESS_MS = 500;
+const MOVE_TOLERANCE = 10;
+
+export function DayScale({
+  items,
+  isToday,
+  nowLabel,
+  minRange,
+  onLongPress,
+  pending,
+  pendingLabel,
+  pressHint,
+}: {
+  items: ScaleItem[];
+  isToday: boolean;
+  nowLabel: string;
+  /** Мінімальний діапазон годин шкали (щоб було куди натиснути в порожній день). */
+  minRange?: [number, number];
+  /** Утримання пальця на порожньому місці → година початку (крок 30 хв). */
+  onLongPress?: (hour: number) => void;
+  /** Година слота, що зараз створюється (сірий блок-заглушка). */
+  pending?: number | null;
+  pendingLabel?: string;
+  pressHint?: string;
+}) {
+  const scaleRef = useRef<HTMLDivElement>(null);
+  const press = useRef<{ timer: number; hintTimer: number; x: number; y: number } | null>(null);
+  const [pressing, setPressing] = useState<number | null>(null);
+  useEffect(() => () => cancelPress(), []);
+
+  function cancelPress() {
+    if (press.current) {
+      clearTimeout(press.current.timer);
+      clearTimeout(press.current.hintTimer);
+      press.current = null;
+    }
+    setPressing(null);
+  }
+
   const sorted = [...items].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const startOf = (it: ScaleItem) => {
     const d = fromIso(it.startsAt);
@@ -35,8 +73,12 @@ export function DayScale({ items, isToday, nowLabel }: { items: ScaleItem[]; isT
 
   const n = now();
   const nowH = n.hour + n.minute / 60;
-  let from = Math.floor(Math.min(...sorted.map(startOf)));
-  let to = Math.ceil(Math.max(...sorted.map(endOf)));
+  let from = sorted.length ? Math.floor(Math.min(...sorted.map(startOf))) : (minRange?.[0] ?? 8);
+  let to = sorted.length ? Math.ceil(Math.max(...sorted.map(endOf))) : (minRange?.[1] ?? 20);
+  if (minRange) {
+    from = Math.min(from, minRange[0]);
+    to = Math.max(to, minRange[1]);
+  }
   if (isToday && nowH >= from - 1 && nowH <= to + 1) {
     from = Math.min(from, Math.floor(nowH));
     to = Math.max(to, Math.ceil(nowH));
@@ -44,7 +86,7 @@ export function DayScale({ items, isToday, nowLabel }: { items: ScaleItem[]; isT
   to = Math.min(Math.max(to, from + 1), 24);
 
   // Висота години: щоб найкоротший слот мав читабельну висоту.
-  const shortest = Math.min(...sorted.map((s) => s.durationMin));
+  const shortest = sorted.length ? Math.min(...sorted.map((s) => s.durationMin)) : 60;
   const hourPx = Math.min(140, Math.max(72, ((MIN_BLOCK + 8) / shortest) * 60));
 
   // Колонки для перетинів.
@@ -74,11 +116,53 @@ export function DayScale({ items, isToday, nowLabel }: { items: ScaleItem[]; isT
   flush();
 
   const hours = Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+  // Година (крок 30 хв) за вертикальною позицією пальця.
+  const hourAt = (clientY: number) => {
+    const rect = scaleRef.current!.getBoundingClientRect();
+    const h = from + (clientY - rect.top) / hourPx;
+    return Math.max(from, Math.min(to - 0.5, Math.floor(h * 2) / 2));
+  };
+
+  function onPointerDown(e: RPointerEvent<HTMLDivElement>) {
+    if (!onLongPress || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('.block, .bell')) return;
+    cancelPress();
+    const { clientX: x, clientY: y } = e;
+    const hour = hourAt(y);
+    press.current = {
+      x,
+      y,
+      // Підказка, що утримання триває.
+      hintTimer: window.setTimeout(() => setPressing(hour), 150),
+      timer: window.setTimeout(() => {
+        cancelPress();
+        onLongPress(hour);
+      }, LONG_PRESS_MS),
+    };
+  }
+
+  function onPointerMove(e: RPointerEvent<HTMLDivElement>) {
+    const p = press.current;
+    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > MOVE_TOLERANCE) cancelPress();
+  }
+
+  const ghost = pending ?? pressing;
   const height = (to - from) * hourPx;
 
   return (
     <div className="card day-scale">
-      <div className="scale" style={{ height }}>
+      <div
+        ref={scaleRef}
+        className={`scale${onLongPress ? ' pressable' : ''}`}
+        style={{ height }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        onPointerLeave={cancelPress}
+        onContextMenu={onLongPress ? (e) => e.preventDefault() : undefined}
+      >
         {hours.map((h) => (
           <span key={h} className="scale-hour" style={{ top: (h - from) * hourPx }}>
             <span>{String(h % 24).padStart(2, '0')}:00</span>
@@ -117,6 +201,18 @@ export function DayScale({ items, isToday, nowLabel }: { items: ScaleItem[]; isT
             </div>
           );
         })}
+        {ghost != null && (
+          <div
+            className={`block ghost${pending != null ? ' creating' : ''}`}
+            style={{ top: (ghost - from) * hourPx + 3, height: hourPx - 6, left: 0, right: 0 }}
+            aria-live="polite"
+          >
+            <span className="block-title">{pending != null ? pendingLabel : pressHint}</span>
+            <span className="block-meta">
+              {fmtH(ghost)}–{fmtH(ghost + 1)}
+            </span>
+          </div>
+        )}
         {isToday && nowH >= from && nowH <= to && <div className="now-line" style={{ top: (nowH - from) * hourPx - 5 }} aria-label={nowLabel} />}
       </div>
     </div>
@@ -131,4 +227,10 @@ export function Seats({ booked, capacity }: { booked: number; capacity: number }
       ))}
     </span>
   );
+}
+
+function fmtH(h: number) {
+  const hh = Math.floor(h) % 24;
+  const mm = Math.round((h - Math.floor(h)) * 60);
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }

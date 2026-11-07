@@ -2287,3 +2287,63 @@ html.tg-fullscreen .screen.center {
 .cells span.left.low {
   background: var(--yellow);
 }
+
+/* Утримання пальця на порожньому місці шкали — новий слот. */
+.scale.pressable {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.block.ghost {
+  z-index: 1;
+  border: 1.5px dashed rgba(76, 141, 255, 0.6);
+  background: rgba(76, 141, 255, 0.08);
+  pointer-events: none;
+  animation: ghost-in 0.35s ease-out;
+}
+
+.block.ghost.creating {
+  border-style: solid;
+  background: rgba(76, 141, 255, 0.16);
+}
+
+@keyframes ghost-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block.ghost {
+    animation: none;
+  }
+}
+
+/*
+ * Як у нативному застосунку: без лупи й виділення тексту при подвійному
+ * дотику чи утриманні (iOS/Android), без зуму подвійним тапом.
+ * У полях введення виділення працює як завжди.
+ */
+html {
+  touch-action: manipulation;
+}
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}

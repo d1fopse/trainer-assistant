@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DateTime } from 'luxon';
 import { calendarApi, waitlistApi, type PublicSlot, type TrainerSlot } from '../api';
 import { Icon } from '../icons';
-import { errorText } from '../errors';
+import { errorText, withOverlapConfirm } from '../errors';
 import { useNav } from '../nav';
-import { confirmAction, haptic, openChat } from '../telegram';
-import { fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
+import { confirmAction, haptic, hapticImpact, openChat } from '../telegram';
+import { fmt, fromIso, isoDate, now, timeRange, toIso, weekStart } from '../time';
 import { Loading, LoadError, Screen, Stat, TimedNotice, useLoad } from '../ui';
 import { DayScale, Seats, type ScaleItem } from './DayScale';
 
@@ -91,6 +91,33 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
       setNotice(t('errors.save'));
     } finally {
       setCopying(false);
+    }
+  }
+
+  // Утримання пальця на порожньому місці шкали — індивідуальний слот на годину.
+  const [pending, setPending] = useState<number | null>(null);
+  const [quickNote, setQuickNote] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => setQuickNote(null), [day]);
+  async function quickCreate(hour: number) {
+    if (pending !== null) return;
+    const time = `${String(Math.floor(hour)).padStart(2, '0')}:${hour % 1 ? '30' : '00'}`;
+    setPending(hour);
+    setQuickNote(null);
+    hapticImpact();
+    try {
+      const slot = await withOverlapConfirm(t, (force) =>
+        calendarApi.createSlot({ startsAt: toIso(day, time), durationMin: 60, type: 'INDIVIDUAL', clientIds: [], force }),
+      );
+      if (slot) {
+        haptic('success');
+        setData([...(data ?? []), slot]);
+        setQuickNote({ ok: true, text: t('calendar.quickCreated', { time: timeRange(slot.startsAt, slot.durationMin) }) });
+      }
+    } catch (e) {
+      haptic('error');
+      setQuickNote({ ok: false, text: errorText(e, t) });
+    } finally {
+      setPending(null);
     }
   }
 
@@ -179,8 +206,31 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
         <LoadError onRetry={reload} />
       ) : !data ? (
         <Loading />
+      ) : isTrainer ? (
+        <>
+          <DayScale
+            items={items}
+            isToday={day === today}
+            nowLabel={t('calendar.now', { time: now().toFormat('HH:mm') })}
+            minRange={[7, 22]}
+            onLongPress={(h) => void quickCreate(h)}
+            pending={pending}
+            pendingLabel={t('calendar.quickCreating')}
+            pressHint={t('calendar.quickHold')}
+          />
+          {quickNote ? (
+            <p className={`small ${quickNote.ok ? 'ok-text' : 'error'}`} style={{ padding: '0 4px' }} role="status">
+              {quickNote.text}
+            </p>
+          ) : (
+            <p className="muted tiny" style={{ padding: '0 4px' }}>
+              {items.length === 0 ? `${t('calendar.emptyTrainer')} ` : ''}
+              {t('calendar.quickHint')}
+            </p>
+          )}
+        </>
       ) : items.length === 0 ? (
-        <p className="card muted center-text">{isTrainer ? t('calendar.emptyTrainer') : t('calendar.empty')}</p>
+        <p className="card muted center-text">{t('calendar.empty')}</p>
       ) : (
         <DayScale items={items} isToday={day === today} nowLabel={t('calendar.now', { time: now().toFormat('HH:mm') })} />
       )}
