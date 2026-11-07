@@ -26,8 +26,10 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
   const nav = useNav();
   const lang = i18n.language;
   const today = isoDate(now());
-  const [week, setWeek] = useState<DateTime>(lastWeek ?? weekStart(now()));
-  const [day, setDay] = useState<string>(lastDay ?? today);
+  const [week, setWeek] = useState<DateTime>(() =>
+    lastWeek && (isTrainer || isoDate(lastWeek) >= isoDate(weekStart(now()))) ? lastWeek : weekStart(now()),
+  );
+  const [day, setDay] = useState<string>(() => (lastDay && (isTrainer || lastDay >= today) ? lastDay : today));
   const [copying, setCopying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [bellError, setBellError] = useState<string | null>(null);
@@ -56,8 +58,12 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
     const w = week.plus({ weeks: n });
     setWeek(w);
     // Переходимо на той самий день тижня.
-    setDay(isoDate(w.plus({ days: Math.max(0, days.findIndex((d) => isoDate(d) === day)) })));
+    const next = isoDate(w.plus({ days: Math.max(0, days.findIndex((d) => isoDate(d) === day)) }));
+    // Клієнти й гості не бачать минулих днів.
+    setDay(!isTrainer && next < today ? today : next);
   }
+
+  const atCurrentWeek = isoDate(week) <= isoDate(weekStart(now()));
 
   function goToday() {
     setWeek(weekStart(now()));
@@ -117,7 +123,12 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
       {awaitingApproval && <TimedNotice id="guestWaiting">{t('home.guestWaiting')}</TimedNotice>}
 
       <div className="week-nav">
-        <button className="icon-button sm" aria-label={t('calendar.prevWeek')} onClick={() => shiftWeek(-1)}>
+        <button
+          className="icon-button sm"
+          aria-label={t('calendar.prevWeek')}
+          disabled={!isTrainer && atCurrentWeek}
+          onClick={() => shiftWeek(-1)}
+        >
           <Icon name="chevronLeft" size={16} />
         </button>
         <button className="link-button week-label" onClick={goToday}>
@@ -139,6 +150,7 @@ export function Calendar({ isTrainer, canWaitlist, awaitingApproval, trainerUser
               aria-current={k === today ? 'date' : undefined}
               aria-pressed={k === day}
               className={`day${k === day ? ' active' : ''}${k === today ? ' today' : ''}${k < today ? ' past' : ''}`}
+              disabled={!isTrainer && k < today}
               onClick={() => setDay(k)}
             >
               <span className="day-name">{fmt(d, lang, 'ccc')}</span>

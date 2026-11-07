@@ -215,21 +215,24 @@ function validateSeriesSpan(startDate: string, endDate: string) {
   if (span > MAX_SERIES_DAYS) throw new HttpError(400, 'series_too_long');
 }
 
-export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: CalendarHooks = {}) {
+export function registerCalendarRoutes(app: FastifyInstance, db: Db, hooks: CalendarHooks = {}, now: () => Date = () => new Date()) {
   const trainerOnly = { preHandler: requireTrainer };
 
   /**
    * Календар на період. Тренер бачить імена; клієнти й гості — лише «вільно / зайнято»
-   * та власні записи.
+   * та власні записи, і лише починаючи з сьогоднішнього дня (історію календаря не видно).
    */
   app.get('/api/calendar', async (req) => {
-    const { from, to } = parse(rangeQuery, req.query, 'invalid_query');
-    if (to <= from || to.getTime() - from.getTime() > MAX_RANGE_DAYS * 86_400_000) {
+    const { from: requested, to } = parse(rangeQuery, req.query, 'invalid_query');
+    if (to <= requested || to.getTime() - requested.getTime() > MAX_RANGE_DAYS * 86_400_000) {
       throw new HttpError(400, 'invalid_range');
     }
+    const u = req.authUser!;
+    const today = kyivDayStart(kyivDate(now()));
+    const from = u.role === 'TRAINER' || requested >= today ? requested : today;
+    if (from >= to) return { slots: [] };
     const where = and(eq(slots.status, 'OPEN'), gte(slots.startsAt, from), lt(slots.startsAt, to));
     const list = await loadTrainerSlots(db, where);
-    const u = req.authUser!;
     if (u.role === 'TRAINER') return { slots: list };
 
     const myClientId = u.client?.id ?? null;

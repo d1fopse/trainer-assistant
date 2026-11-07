@@ -2274,3 +2274,7 @@ html.tg-fullscreen .screen.center {
   align-items: center;
   gap: 12px;
 }
+
+.week-strip .day:disabled {
+  opacity: 0.35;
+}

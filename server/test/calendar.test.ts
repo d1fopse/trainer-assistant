@@ -15,6 +15,8 @@ describe('calendar', () => {
 
   const range = (from: string, to: string) =>
     `/api/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  // «Зараз» — пт 6 листопада, 12:00 за Києвом.
+  const NOW = new Date('2026-11-06T10:00:00Z');
   const WEEK = range('2026-11-09T00:00:00+02:00', '2026-11-16T00:00:00+02:00');
 
   async function onboardAndApprove(tgId: number, name: string) {
@@ -32,7 +34,7 @@ describe('calendar', () => {
 
   beforeAll(async () => {
     t = await createTestDb();
-    ({ call } = await createTestApp(t.db));
+    ({ call } = await createTestApp(t.db, { now: () => NOW }));
   });
   beforeEach(async () => {
     await t.reset();
@@ -73,6 +75,20 @@ describe('calendar', () => {
     const guest = (await call(999, 'GET', WEEK)).json().slots;
     expect(guest).toHaveLength(2);
     expect(JSON.stringify(guest)).not.toContain('Анна');
+  });
+
+  it('clients and guests do not see past days; the trainer does', async () => {
+    await slot({ startsAt: '2026-11-04T10:00:00+02:00', durationMin: 60, type: 'INDIVIDUAL', clientIds: [anna] }); // минуле
+    await slot({ startsAt: '2026-11-06T08:00:00+02:00', durationMin: 60, type: 'INDIVIDUAL' }); // сьогодні вранці
+    await slot({ startsAt: '2026-11-10T10:00:00+02:00', durationMin: 60, type: 'INDIVIDUAL' }); // майбутнє
+    const all = range('2026-11-02T00:00:00+02:00', '2026-11-16T00:00:00+02:00');
+    expect((await call(TRAINER_ID, 'GET', all)).json().slots).toHaveLength(3);
+    for (const who of [CLIENT_A, 999]) {
+      const seen = (await call(who, 'GET', all)).json().slots.map((s: { startsAt: string }) => s.startsAt);
+      expect(seen).toEqual(['2026-11-06T06:00:00.000Z', '2026-11-10T08:00:00.000Z']);
+    }
+    // Запит лише минулого тижня — порожньо.
+    expect((await call(CLIENT_A, 'GET', range('2026-10-26T00:00:00+02:00', '2026-11-02T00:00:00+02:00'))).json().slots).toEqual([]);
   });
 
   it('validates the requested range', async () => {

@@ -68,7 +68,7 @@ export async function buildApp(config: Config, db: Db, deps: AppDeps = {}) {
     registerMeRoutes(api, db, config);
     registerClientRoutes(api, db);
     registerPriceRoutes(api, db);
-    registerCalendarRoutes(api, db, hooks);
+    registerCalendarRoutes(api, db, hooks, deps.now);
     registerMoneyRoutes(api, db, hooks);
     registerWaitlistRoutes(api, db, notifier);
     registerAnalyticsRoutes(api, db, deps.now);
