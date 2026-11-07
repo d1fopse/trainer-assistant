@@ -126,7 +126,7 @@ export function addToHomeScreen(): Promise<boolean> {
 // ---------- Налаштування на пристрої (DeviceStorage, Bot API 9.0; інакше localStorage) ----------
 
 const prefs = new Map<string, string>();
-const PREF_KEYS = ['tab', 'analyticsPeriod'] as const;
+const PREF_KEYS = ['analyticsPeriod'] as const;
 export type PrefKey = (typeof PREF_KEYS)[number];
 
 /** Завантажує збережені налаштування до першого рендеру (не довше ~400 мс). */
