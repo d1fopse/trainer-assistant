@@ -413,3 +413,24 @@ export function TimedNotice({ id, ms = 10000, children }: { id: string; ms?: num
     </div>
   );
 }
+
+/** Абонемент «майже закінчився»: лишилось ≤ 25 % занять (8 → 1–2, 12 → 1–3). */
+export function passIsLow(remaining: number, total: number) {
+  return remaining > 0 && remaining <= total * 0.25;
+}
+
+/**
+ * Смужки абонемента для клієнта: по одній на заняття.
+ * Залишок — зелені, а коли лишилось ≤ 25 % — жовті; використані — сірі.
+ */
+export function PassCells({ total, remaining, label }: { total: number; remaining: number; label: string }) {
+  const low = passIsLow(remaining, total);
+  const n = Math.min(total, 40);
+  return (
+    <div className="cells" role="img" aria-label={label}>
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className={i < remaining ? (low ? 'left low' : 'left') : ''} />
+      ))}
+    </div>
+  );
+}

@@ -4,7 +4,7 @@ import { demoApi, moneyApi, waitlistApi, type BotSettings, type Lang, type Me } 
 import { Icon } from '../icons';
 import { addToHomeScreen, canAddToHomeScreen, checkHomeScreen, confirmAction, haptic, openChat, type HomeScreenStatus } from '../telegram';
 import { fmt, formatDuration, fromIso, now, timeRange } from '../time';
-import { Chip, Ev, Loading, PassLine, Screen, Section, Segmented, StreamNow, Switch, TimedNotice, useLoad, type Tone } from '../ui';
+import { Chip, Ev, Loading, PassCells, passIsLow, Screen, Section, Segmented, StreamNow, Switch, TimedNotice, useLoad, type Tone } from '../ui';
 
 export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => void }) {
   const { t, i18n } = useTranslation();
@@ -122,24 +122,21 @@ function ClientHome() {
         <div className="card stack">
           <div className="price-top">
             <span className="muted small">{pass ? t('money.passOf', { count: pass.totalSessions }) : t('money.pass')}</span>
-            <span className={`big-number${pass && s.remaining <= 1 ? ' warn-text' : ''}`} style={{ fontSize: 22 }}>
-              {s.remaining} <span className="muted small">{t('money.leftShort')}</span>
+            <span className={`big-number${pass && passIsLow(pass.remaining, pass.totalSessions) ? ' warn-text' : ''}`} style={{ fontSize: 22 }}>
+              {pass ? pass.remaining : s.remaining} <span className="muted small">{t('money.leftShort')}</span>
             </span>
           </div>
           {pass ? (
-            <PassLine
-              start={pass.purchasedAt}
-              end={pass.expiresAt}
-              total={pass.totalSessions}
-              remaining={pass.remaining}
-              marks={[
-                ...data.history
-                  .filter((h) => h.startsAt >= `${pass.purchasedAt}T00`)
-                  .map((h) => ({ at: h.startsAt, kind: (h.status === 'NO_SHOW' ? 'n' : 'v') as 'v' | 'n' })),
-                ...data.upcoming.map((u) => ({ at: u.startsAt, kind: 'b' as const })),
-              ]}
-              lang={lang}
-            />
+            <>
+              <PassCells
+                total={pass.totalSessions}
+                remaining={pass.remaining}
+                label={t('money.sessionsLeft', { count: pass.remaining }) + `: ${pass.remaining} / ${pass.totalSessions}`}
+              />
+              {pass.expiresAt && (
+                <span className="faint tiny">{t('money.until', { date: fmt(fromIso(`${pass.expiresAt}T12:00`), lang, 'd MMMM') })}</span>
+              )}
+            </>
           ) : (
             <p className="muted small">{t('money.noActivePassClient')}</p>
           )}

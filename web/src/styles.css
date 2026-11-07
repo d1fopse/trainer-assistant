@@ -2278,3 +2278,12 @@ html.tg-fullscreen .screen.center {
 .week-strip .day:disabled {
   opacity: 0.35;
 }
+
+/* Смужки абонемента клієнта: залишок зелений, ≤ 25 % — жовтий. */
+.cells span.left {
+  background: var(--green);
+}
+
+.cells span.left.low {
+  background: var(--yellow);
+}

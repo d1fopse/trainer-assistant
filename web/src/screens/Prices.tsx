@@ -3,7 +3,7 @@ import { api, moneyApi, type Price } from '../api';
 import { useNav } from '../nav';
 import { openChat } from '../telegram';
 import { fmt, fromIso } from '../time';
-import { Chip, Loading, LoadError, PassLine, Screen, Section, formatUah, useLoad } from '../ui';
+import { Chip, Loading, LoadError, PassCells, passIsLow, Screen, Section, formatUah, useLoad } from '../ui';
 
 export function localized(p: Price, lang: string) {
   const ru = lang === 'ru';
@@ -144,7 +144,6 @@ function MyPassTile() {
   const s = data?.summary;
   if (!s || s.activePasses.length === 0) return null;
   const pass = [...s.activePasses].sort((a, b) => (a.expiresAt ?? '9999').localeCompare(b.expiresAt ?? '9999'))[0]!;
-  const start = pass.purchasedAt;
   const daysLeft = pass.expiresAt ? Math.max(0, Math.ceil((new Date(`${pass.expiresAt}T23:59`).getTime() - Date.now()) / 86400000)) : null;
   const perWeek = daysLeft ? Math.ceil((pass.remaining / Math.max(daysLeft, 1)) * 7) : null;
   return (
@@ -155,20 +154,10 @@ function MyPassTile() {
           {pass.expiresAt ? t('money.daysLeft', { count: daysLeft ?? 0 }) : t('money.noExpiry')}
         </span>
       </div>
-      <span className="big-number" style={{ fontSize: 30 }}>
+      <span className={`big-number${passIsLow(pass.remaining, pass.totalSessions) ? ' warn-text' : ''}`} style={{ fontSize: 30 }}>
         {pass.remaining} <span className="muted small">{t('money.sessionsLeft', { count: pass.remaining })}</span>
       </span>
-      <PassLine
-        start={start}
-        end={pass.expiresAt}
-        total={pass.totalSessions}
-        remaining={pass.remaining}
-        marks={[
-          ...data!.history.filter((h) => h.startsAt >= `${start}T00`).map((h) => ({ at: h.startsAt, kind: (h.status === 'NO_SHOW' ? 'n' : 'v') as 'v' | 'n' })),
-          ...data!.upcoming.map((u) => ({ at: u.startsAt, kind: 'b' as const })),
-        ]}
-        lang={lang}
-      />
+      <PassCells total={pass.totalSessions} remaining={pass.remaining} label={t('money.sessionsLeft', { count: pass.remaining }) + `: ${pass.remaining} / ${pass.totalSessions}`} />
       {perWeek !== null && pass.remaining > 0 && <span className="muted tiny">{t('money.paceHint', { count: perWeek })}</span>}
       {pass.expiresAt && <span className="faint tiny">{t('money.until', { date: fmt(fromIso(`${pass.expiresAt}T12:00`), lang, 'd MMMM') })}</span>}
     </div>
