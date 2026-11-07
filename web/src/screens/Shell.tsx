@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Lang, Me } from '../api';
 import { NavContext, type Nav, type Route, type Tab } from '../nav';
-import { bindBackButton } from '../telegram';
+import { bindBackButton, getPref, setPref } from '../telegram';
 import { Icon } from '../icons';
 import { Calendar } from './Calendar';
 import { AnalyticsScreen } from './Analytics';
@@ -24,7 +24,8 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
   const tabs: Tab[] = isTrainer ? ['calendar', 'clients', 'analytics', 'prices', 'profile'] : ['calendar', 'prices', 'profile'];
 
   // Клієнт з карткою починає з «Головної» (профіль), решта — з календаря.
-  const [tab, setTab] = useState<Tab>(me.user.role === 'CLIENT' ? 'profile' : tabs[0]!);
+  const saved = getPref('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(saved && tabs.includes(saved) ? saved : me.user.role === 'CLIENT' ? 'profile' : tabs[0]!);
   // Окрема історія екранів для кожної вкладки.
   const [stacks, setStacks] = useState<Record<Tab, Route[]>>({
     calendar: [{ name: 'calendar' }],
@@ -60,6 +61,7 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
       setStacks((s) => ({ ...s, [tab]: s[tab].slice(0, 1) }));
     } else {
       setTab(next);
+      setPref('tab', next);
     }
   }
 

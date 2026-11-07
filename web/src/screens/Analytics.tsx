@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DateTime } from 'luxon';
 import { analyticsApi, calendarApi, type Analytics, type TrainerSlot } from '../api';
 import { useNav } from '../nav';
+import { getPref, setPref } from '../telegram';
 import { ZONE, fmt, fromIso, isoDate, now, timeRange, weekStart } from '../time';
 import { Chip, Ev, Loading, LoadError, Screen, Section, Segmented, Stat, formatUah, useLoad } from '../ui';
 
 type Period = 'month' | 'prev' | 'quarter' | 'year';
-let lastPeriod: Period = 'month';
+let lastPeriod: Period | null = null;
 
 function range(p: Period) {
   const now = DateTime.now().setZone(ZONE);
@@ -27,8 +28,11 @@ export function AnalyticsScreen() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const nav = useNav();
-  const [period, setPeriod] = useState<Period>(lastPeriod);
+  const [period, setPeriod] = useState<Period>(
+    () => lastPeriod ?? (['month', 'prev', 'quarter', 'year'] as const).find((p) => p === getPref('analyticsPeriod')) ?? 'month',
+  );
   lastPeriod = period;
+  useEffect(() => setPref('analyticsPeriod', period), [period]);
   const [from, to] = range(period);
   const { data, failed, reload } = useLoad<Analytics>(() => analyticsApi.get(from!.toISODate()!, to!.toISODate()!), [period]);
   const week = weekStart(now());

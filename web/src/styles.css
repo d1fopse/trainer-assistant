@@ -2240,3 +2240,37 @@ button.ev:active:not(:disabled) {
     animation: none;
   }
 }
+
+/* ---------- Mini Apps 2.0: повноекранний режим і безпечні зони ---------- */
+
+:root {
+  --safe-bottom: max(env(safe-area-inset-bottom), var(--tg-safe-area-inset-bottom, 0px));
+}
+
+.screen {
+  padding-left: calc(14px + var(--tg-safe-area-inset-left, 0px));
+  padding-right: calc(14px + var(--tg-safe-area-inset-right, 0px));
+}
+
+/* На весь екран: шапка нижче за системну панель і кнопки Telegram («Закрити», «⋯»). */
+html.tg-fullscreen .screen {
+  padding-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px) + 8px);
+}
+
+html.tg-fullscreen .screen.center {
+  padding-top: 20px;
+}
+
+.content {
+  padding-bottom: calc(92px + var(--safe-bottom));
+}
+
+.tabbar {
+  bottom: calc(12px + var(--safe-bottom));
+}
+
+.home-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

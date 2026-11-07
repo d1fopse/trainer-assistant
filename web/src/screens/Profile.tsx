@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { demoApi, moneyApi, waitlistApi, type BotSettings, type Lang, type Me } from '../api';
 import { Icon } from '../icons';
-import { confirmAction, haptic, openChat } from '../telegram';
+import { addToHomeScreen, canAddToHomeScreen, checkHomeScreen, confirmAction, haptic, openChat, type HomeScreenStatus } from '../telegram';
 import { fmt, formatDuration, fromIso, now, timeRange } from '../time';
 import { Chip, Ev, Loading, PassLine, Screen, Section, Segmented, StreamNow, Switch, TimedNotice, useLoad, type Tone } from '../ui';
 
@@ -58,6 +58,7 @@ export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => v
             </span>
           </div>
         </div>
+        <HomeScreen />
         {language}
         <DemoData />
       </Screen>
@@ -71,6 +72,7 @@ export function Profile({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => v
       {me.trainerUsername && role === 'CLIENT' && (
         <button onClick={() => openChat(me.trainerUsername!)}>{t('home.writeTrainer')}</button>
       )}
+      <HomeScreen />
       {language}
     </Screen>
   );
@@ -297,5 +299,45 @@ function DemoData() {
         {failed && <p className="error small">{t('errors.save')}</p>}
       </div>
     </Section>
+  );
+}
+
+/** Іконка застосунку на головному екрані телефона (Mini Apps 2.0). */
+function HomeScreen() {
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<HomeScreenStatus | null>(canAddToHomeScreen ? null : 'unsupported');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (canAddToHomeScreen) void checkHomeScreen().then(setStatus);
+  }, []);
+  if (status === null || status === 'unsupported') return null;
+
+  async function add() {
+    setBusy(true);
+    const ok = await addToHomeScreen();
+    setBusy(false);
+    if (ok) {
+      setStatus('added');
+      haptic('success');
+    }
+  }
+
+  return (
+    <div className="card home-tile">
+      <span className="icon-button" style={{ background: 'rgba(61,220,151,0.12)', border: 0, color: 'var(--green)' }} aria-hidden>
+        <Icon name="home" size={20} />
+      </span>
+      <div className="list-main">
+        <span className="list-title">{t('homeScreen.title')}</span>
+        <span className="muted small" style={{ whiteSpace: 'normal' }}>
+          {status === 'added' ? t('homeScreen.added') : t('homeScreen.hint')}
+        </span>
+      </div>
+      {status !== 'added' && (
+        <button className="small-button" disabled={busy} onClick={() => void add()}>
+          {t('homeScreen.add')}
+        </button>
+      )}
+    </div>
   );
 }
