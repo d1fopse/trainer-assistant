@@ -37,7 +37,12 @@ export async function myWaitlistSlotIds(db: Db, clientId: number, slotIds: numbe
 }
 
 const settingsBody = z
-  .object({ dailySummaryTime: z.string().regex(TIME_RE), remindersEnabled: z.boolean() })
+  .object({
+    dailySummaryTime: z.string().regex(TIME_RE),
+    remindersEnabled: z.boolean(),
+    markPromptsEnabled: z.boolean(),
+    renewalRemindersEnabled: z.boolean(),
+  })
   .partial()
   .strict();
 

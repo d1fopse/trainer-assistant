@@ -165,7 +165,7 @@ describe('bot: webhook, reminders, summary, waitlist, broadcasts', () => {
 
     it('follows the configured time and /today works on demand', async () => {
       await call(TRAINER_ID, 'PATCH', '/api/settings', { dailySummaryTime: '06:30' });
-      expect((await call(TRAINER_ID, 'GET', '/api/settings')).json().settings).toEqual({ dailySummaryTime: '06:30', remindersEnabled: true });
+      expect((await call(TRAINER_ID, 'GET', '/api/settings')).json().settings).toEqual({ dailySummaryTime: '06:30', remindersEnabled: true, markPromptsEnabled: true, renewalRemindersEnabled: true });
       expect((await call(ANNA, 'GET', '/api/settings')).statusCode).toBe(403);
       now = new Date('2026-11-10T04:35:00Z'); // 06:35
       await app.notifier!.tick();
@@ -173,6 +173,107 @@ describe('bot: webhook, reminders, summary, waitlist, broadcasts', () => {
 
       await message(TRAINER_ID, '/today');
       expect(tg.to(TRAINER_ID)).toHaveLength(2);
+    });
+  });
+
+  describe('after-session mark prompt', () => {
+    const prompts = () => tg.to(TRAINER_ID).filter((m) => String(m.params.text).includes('хто прийшов'));
+    it('asks the trainer who came; buttons mark the booking and refresh the message', async () => {
+      await message(TRAINER_ID, '/start');
+      await call(TRAINER_ID, 'POST', `/api/clients/${annaId}/passes`, { totalSessions: 8 });
+      const g = await slot('2026-11-10T13:00:00+02:00', [annaId, borysId], { type: 'GROUP', capacity: 4 });
+      tg.clear();
+
+      now = new Date('2026-11-10T11:30:00Z'); // 13:30 — заняття ще йде
+      await app.notifier!.tick();
+      expect(prompts()).toHaveLength(0);
+
+      now = new Date('2026-11-10T12:05:00Z'); // 14:05 — закінчилось
+      await app.notifier!.tick();
+      await app.notifier!.tick();
+      const sent = prompts();
+      expect(sent).toHaveLength(1); // лише раз
+      expect(sent[0]!.params.text).toContain('хто прийшов');
+      const kb = JSON.stringify(sent[0]!.params.reply_markup);
+      const [annaBooking, borysBooking] = g.bookings.map((b: { id: number }) => b.id);
+      expect(kb).toContain(`mk:a:${annaBooking}`);
+      expect(kb).toContain(`mk:n:${borysBooking}`);
+
+      await callback(TRAINER_ID, `mk:a:${annaBooking}`);
+      let edit = tg.sent('editMessageText').at(-1)!;
+      expect(edit.params.text).toContain('Анна — прийшов, списано');
+      expect(JSON.stringify(edit.params.reply_markup)).not.toContain(`mk:a:${annaBooking}`);
+
+      await callback(TRAINER_ID, `mk:n:${borysBooking}`);
+      edit = tg.sent('editMessageText').at(-1)!;
+      expect(edit.params.text).toContain('Борис — неявка');
+      expect(edit.params.text).toContain('Усе відмічено');
+
+      const after = (await call(TRAINER_ID, 'GET', `/api/slots/${g.id}`)).json().slot.bookings;
+      expect(after.map((b: { status: string }) => b.status)).toEqual(['ATTENDED', 'NO_SHOW']);
+      const h = (await call(TRAINER_ID, 'GET', `/api/clients/${annaId}/history`)).json();
+      expect(h.summary.remaining).toBe(7);
+
+      // Повторне натискання не списує вдруге.
+      await callback(TRAINER_ID, `mk:a:${annaBooking}`);
+      expect((await call(TRAINER_ID, 'GET', `/api/clients/${annaId}/history`)).json().summary.remaining).toBe(7);
+      // Клієнт не може відмічати.
+      await callback(ANNA, `mk:a:${borysBooking}`);
+      expect((await call(TRAINER_ID, 'GET', `/api/slots/${g.id}`)).json().slot.bookings[1].status).toBe('NO_SHOW');
+    });
+
+    it('can be switched off; old sessions are not asked about', async () => {
+      await message(TRAINER_ID, '/start');
+      await slot('2026-11-10T01:00:00+02:00', [annaId]); // закінчилось >6 год тому
+      tg.clear();
+      await app.notifier!.tick();
+      expect(prompts()).toHaveLength(0);
+      await slot('2026-11-10T13:00:00+02:00', [annaId]);
+      await call(TRAINER_ID, 'PATCH', '/api/settings', { markPromptsEnabled: false });
+      await app.notifier!.tick();
+      expect(prompts()).toHaveLength(0);
+    });
+  });
+
+  describe('pass renewal reminder to the client', () => {
+    it('writes once when one session is left, only in the daytime', async () => {
+      await call(TRAINER_ID, 'POST', `/api/clients/${annaId}/passes`, { totalSessions: 8, remaining: 2 });
+      await call(TRAINER_ID, 'POST', `/api/clients/${borysId}/passes`, { totalSessions: 8, remaining: 5 });
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(0);
+
+      const s = await slot('2026-11-10T09:00:00+02:00', [annaId]);
+      await call(TRAINER_ID, 'PATCH', `/api/bookings/${s.bookings[0].id}`, { status: 'ATTENDED' }); // лишилось 1
+      now = new Date('2026-11-10T20:30:00Z'); // 22:30 — ніч, не пишемо
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(0);
+
+      now = new Date('2026-11-11T08:30:00Z'); // 10:30 наступного дня
+      await app.notifier!.tick();
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(1);
+      expect(tg.to(ANNA)[0]!.params.text).toContain('залишилось 1 заняття');
+      expect(JSON.stringify(tg.to(ANNA)[0]!.params.reply_markup)).toContain('https://t.me/coach');
+      expect(tg.to(BORYS)).toHaveLength(0);
+
+      // Новий абонемент — і знову спрацює вже для нього, коли закінчиться.
+      await call(TRAINER_ID, 'POST', `/api/clients/${annaId}/passes`, { totalSessions: 8 });
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(1);
+    });
+
+    it('warns 3 days before expiry while sessions are left', async () => {
+      now = new Date('2026-11-10T10:00:00Z'); // 12:00
+      await call(TRAINER_ID, 'POST', `/api/clients/${annaId}/passes`, { totalSessions: 8, remaining: 4, expiresAt: '2026-11-14' });
+      await call(TRAINER_ID, 'POST', `/api/clients/${borysId}/passes`, { totalSessions: 8, remaining: 4, expiresAt: '2026-11-25' });
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(0); // 4 дні — ще рано
+      now = new Date('2026-11-11T10:00:00Z');
+      await app.notifier!.tick();
+      expect(tg.to(ANNA)).toHaveLength(1);
+      expect(tg.to(ANNA)[0]!.params.text).toContain('субота, 14 листопада');
+      expect(tg.to(ANNA)[0]!.params.text).toContain('ще 4 заняття');
+      expect(tg.to(BORYS)).toHaveLength(0);
     });
   });
 

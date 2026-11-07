@@ -395,7 +395,12 @@ export type WaitlistEntry = {
   createdAt: string;
 };
 
-export type BotSettings = { dailySummaryTime: string; remindersEnabled: boolean };
+export type BotSettings = {
+  dailySummaryTime: string;
+  remindersEnabled: boolean;
+  markPromptsEnabled: boolean;
+  renewalRemindersEnabled: boolean;
+};
 
 export const waitlistApi = {
   join: (slotId: number) => request<{ waiting: true }>(`/api/slots/${slotId}/waitlist`, { method: 'POST' }),

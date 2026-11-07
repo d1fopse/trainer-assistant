@@ -5,6 +5,8 @@ import { bookings, broadcasts, clients, slots, users } from '../db/schema.js';
 import { kyivDate } from '../time.js';
 import { loadSettings, type Notifier } from './notifier.js';
 import { keyboard, type TelegramApi } from './telegram.js';
+import { renderMarkPrompt } from './marks.js';
+import { markBooking } from '../routes/money.js';
 import { tx } from './texts.js';
 
 export type Audience = 'ALL' | 'ACTIVE' | 'GROUP';
@@ -145,6 +147,10 @@ export class Bot {
     const chatId = q.message?.chat.id;
     const [u] = await this.db.select().from(users).where(eq(users.telegramId, BigInt(q.from.id)));
     const t = tx(u?.language);
+    if (chatId && this.isTrainer(q.from.id) && data.startsWith('mk:')) {
+      await this.onMarkCallback(q, chatId, data, u?.language ?? 'uk');
+      return;
+    }
     await this.tg.call('answerCallbackQuery', { callback_query_id: q.id }).catch(() => undefined);
     if (!chatId || !this.isTrainer(q.from.id) || !data.startsWith('bc:')) return;
     const key = String(chatId);
@@ -205,6 +211,36 @@ export class Bot {
       const job = this.deliver(b.id, chatId, b.sourceMessageId, recipients, t).finally(() => this.pending.delete(job));
       this.pending.add(job);
     }
+  }
+
+  /** Кнопки «✓ прийшов / ✗ неявка» з повідомлення після заняття. */
+  private async onMarkCallback(q: CallbackQuery, chatId: number, data: string, lang: string) {
+    const t = tx(lang);
+    const [, action, idStr] = data.split(':');
+    const bookingId = Number(idStr);
+    const [b] = await this.db.select().from(bookings).where(eq(bookings.id, bookingId));
+    let toast: string | undefined;
+    if (!b) {
+      toast = t.markAlready;
+    } else if (b.status !== 'BOOKED') {
+      toast = t.markAlready;
+    } else {
+      // Неявка з бота — без списання (списати можна в додатку).
+      await this.db.transaction((tx) => markBooking(tx, bookingId, action === 'a' ? 'ATTENDED' : 'NO_SHOW', false));
+    }
+    await this.tg.call('answerCallbackQuery', { callback_query_id: q.id, ...(toast ? { text: toast } : {}) }).catch(() => undefined);
+    if (!b || !q.message) return;
+    const msg = await renderMarkPrompt(this.db, b.slotId, lang);
+    if (!msg) return;
+    await this.tg
+      .call('editMessageText', {
+        chat_id: chatId,
+        message_id: q.message.message_id,
+        text: msg.text,
+        parse_mode: 'HTML',
+        reply_markup: keyboard(msg.buttons),
+      })
+      .catch(() => undefined); // «message is not modified» тощо
   }
 
   private async deliver(

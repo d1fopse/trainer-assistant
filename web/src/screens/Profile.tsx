@@ -235,6 +235,30 @@ function BotDay() {
           <Switch checked={data.remindersEnabled} label={t('botSettings.reminders')} onChange={(v) => void save({ remindersEnabled: v })} />
         </div>
         <div className="bot-ev">
+          <span className="time">{t('botSettings.afterShort')}</span>
+          <span className="ev-dot" style={{ ['--c' as string]: data.markPromptsEnabled ? 'var(--violet)' : 'var(--line-strong)' }} />
+          <div className="list-main">
+            <span className="list-title">{t('botSettings.markPrompt')}</span>
+            <span className="muted tiny" style={{ whiteSpace: 'normal' }}>
+              {t('botSettings.markPromptHint')}
+            </span>
+          </div>
+          <Switch checked={data.markPromptsEnabled} label={t('botSettings.markPrompt')} onChange={(v) => void save({ markPromptsEnabled: v })} />
+        </div>
+        <div className="bot-ev">
+          <span className="time" style={{ fontSize: 16 }}>
+            🎫
+          </span>
+          <span className="ev-dot" style={{ ['--c' as string]: data.renewalRemindersEnabled ? 'var(--yellow)' : 'var(--line-strong)' }} />
+          <div className="list-main">
+            <span className="list-title">{t('botSettings.renewal')}</span>
+            <span className="muted tiny" style={{ whiteSpace: 'normal' }}>
+              {t('botSettings.renewalHint')}
+            </span>
+          </div>
+          <Switch checked={data.renewalRemindersEnabled} label={t('botSettings.renewal')} onChange={(v) => void save({ renewalRemindersEnabled: v })} />
+        </div>
+        <div className="bot-ev">
           <span className="time" style={{ fontSize: 16 }}>
             🔔
           </span>
