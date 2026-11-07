@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api, GOALS, LEVELS, type ClientInput, type ClientListItem } from '../api';
 import { useNav } from '../nav';
 import { haptic } from '../telegram';
-import { Loading, PHONE_RE, Screen } from '../ui';
+import { Loading, PhoneInput, phoneValid, phoneValue, Screen } from '../ui';
 
 type Form = {
   name: string;
@@ -61,7 +61,7 @@ export function ClientForm({ id }: { id?: number }) {
   }
 
   const set = (k: keyof Form, v: string) => setForm({ ...form, [k]: v });
-  const phoneOk = PHONE_RE.test(form.phone.trim());
+  const phoneOk = phoneValid(form.phone);
   const canSave = form.name.trim() !== '' && phoneOk && !busy;
 
   async function save(e: FormEvent) {
@@ -71,7 +71,7 @@ export function ClientForm({ id }: { id?: number }) {
     setFailed(false);
     const body: ClientInput = {
       name: form.name.trim(),
-      phone: form.phone.trim(),
+      phone: phoneValue(form.phone),
       goal: form.goal || null,
       experience: form.experience || null,
       health: form.health,
@@ -105,13 +105,7 @@ export function ClientForm({ id }: { id?: number }) {
         </label>
         <label>
           {t('form.phone')}
-          <input
-            type="tel"
-            inputMode="tel"
-            value={form.phone}
-            onChange={(e) => set('phone', e.target.value)}
-            placeholder="+380…"
-          />
+          <PhoneInput value={form.phone} onChange={(v) => set('phone', v)} />
           {!phoneOk && <span className="error small">{t('errors.phone')}</span>}
         </label>
         <label>

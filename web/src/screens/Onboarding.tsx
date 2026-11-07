@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api';
 import { getTelegramFirstName } from '../telegram';
-import { PHONE_RE } from '../ui';
+import { PhoneInput, phoneValid, phoneValue } from '../ui';
 
 const GOALS = ['weight_loss', 'muscle_gain', 'strength', 'health', 'other'] as const;
 const LEVELS = ['none', 'beginner', 'intermediate', 'advanced'] as const;
@@ -21,7 +21,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const phoneOk = PHONE_RE.test(phone.trim());
+  const phoneOk = phoneValid(phone);
   const stepOk = [name.trim().length > 0 && phoneOk, true, consent][step]!;
 
   async function submit(e: FormEvent) {
@@ -36,7 +36,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     try {
       await api.submitOnboarding({
         name: name.trim(),
-        phone: phone.trim() || undefined,
+        phone: phoneValue(phone) || undefined,
         goal,
         experience,
         health: health.trim() || undefined,
@@ -53,7 +53,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   const titles = [t('onboarding.stepContacts'), t('onboarding.stepGoal'), t('onboarding.stepConsent')];
   const summaries = [
-    [name.trim(), phone.trim()].filter(Boolean).join(' · '),
+    [name.trim(), phoneValue(phone)].filter(Boolean).join(' · '),
     `${t(`onboarding.goals.${goal}`)} · ${t(`onboarding.levels.${experience}`)}`,
     '',
   ];
@@ -66,7 +66,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       </label>
       <label>
         {t('onboarding.phone')}
-        <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380…" />
+        <PhoneInput value={phone} onChange={setPhone} />
         {!phoneOk && <span className="error small">{t('errors.phone')}</span>}
       </label>
     </>,

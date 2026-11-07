@@ -54,6 +54,30 @@ describe('clients (trainer CRM)', () => {
     expect((await call(TRAINER_ID, 'GET', '/api/clients?q=анн')).json().clients).toHaveLength(1);
     expect((await call(TRAINER_ID, 'GET', '/api/clients?q=2222')).json().clients[0].name).toBe('Віра');
     expect((await call(TRAINER_ID, 'GET', '/api/clients?q=%25')).json().clients).toHaveLength(0);
+    // Пошук за цифрами незалежно від запису.
+    expect((await call(TRAINER_ID, 'GET', '/api/clients?q=0502222')).json().clients[0].name).toBe('Віра');
+    expect((await call(TRAINER_ID, 'GET', `/api/clients?q=${encodeURIComponent('50 111')}`)).json().clients[0].name).toBe('Анна');
+  });
+
+  it('stores every phone as +380 XX XXX XX XX', async () => {
+    const cases: [string, string][] = [
+      ['0671234567', '+380 67 123 45 67'],
+      ['380671234567', '+380 67 123 45 67'],
+      ['+38 (067) 123-45-67', '+380 67 123 45 67'],
+      ['+380 67 123 45 67', '+380 67 123 45 67'],
+      ['67 123 45 67', '+380 67 123 45 67'],
+      ['8 067 123 45 67', '+380 67 123 45 67'],
+    ];
+    for (const [input, stored] of cases) {
+      expect((await create({ name: input, phone: input })).phone, input).toBe(stored);
+    }
+    for (const bad of ['+48 601 234 567', '12345', '+380 06 712 34 56', '+1 415 555 0101']) {
+      expect((await call(TRAINER_ID, 'POST', '/api/clients', { name: 'x', phone: bad })).statusCode, bad).toBe(400);
+    }
+    // Анкета гостя теж нормалізує.
+    await call(777, 'POST', '/api/onboarding', { name: 'Гість', phone: '093-555-12-34', goal: 'health', experience: 'none', consent: true });
+    const guest = (await call(TRAINER_ID, 'GET', '/api/clients?status=GUEST')).json().clients.find((c: { name: string }) => c.name === 'Гість');
+    expect(guest.phone).toBe('+380 93 555 12 34');
   });
 
   it('edits fields and clears them with empty strings', async () => {
@@ -130,7 +154,7 @@ describe('clients (trainer CRM)', () => {
       expect(card).toMatchObject({
         id: manual.id,
         name: 'Олег (вручну)',
-        phone: '+380671234567', // ручні дані мають пріоритет
+        phone: '+380 67 123 45 67', // ручні дані мають пріоритет
         trainerNotes: 'ходить з 2024',
         goal: 'strength', // порожні поля доповнено з анкети
         injuries: 'коліно',

@@ -5,18 +5,49 @@ import { useNav } from './nav';
 import { Icon } from './icons';
 
 /** Завантаження даних для екрана з повтором при помилці. */
+/**
+ * Кеш відповідей: при поверненні на екран одразу показуємо останні дані,
+ * а свіжі підтягуємо у фоні (без «Завантаження…» і стрибків сторінки).
+ * Ключ — код функції завантаження + її залежності (той самий запит → той самий ключ).
+ */
+const loadCache = new Map<string, unknown>();
+const CACHE_LIMIT = 200;
+
+function cacheSet(key: string, value: unknown) {
+  loadCache.delete(key);
+  loadCache.set(key, value);
+  if (loadCache.size > CACHE_LIMIT) loadCache.delete(loadCache.keys().next().value!);
+}
+
 export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
+  const key = `${load.toString()}|${JSON.stringify(deps)}`;
+  const [data, setDataState] = useState<T | null>(() => (loadCache.get(key) as T | undefined) ?? null);
   const [failed, setFailed] = useState(false);
   const loadRef = useRef(load);
   loadRef.current = load;
+  const keyRef = useRef(key);
+
+  // Нові залежності (інший тиждень, інший клієнт) — показуємо кеш для них або «завантаження».
+  if (keyRef.current !== key) {
+    keyRef.current = key;
+    setDataState((loadCache.get(key) as T | undefined) ?? null);
+  }
+
+  const setData = useCallback((v: T | null) => {
+    if (v !== null) cacheSet(keyRef.current, v);
+    setDataState(v);
+  }, []);
 
   const reload = useCallback(async () => {
+    const k = keyRef.current;
     setFailed(false);
     try {
-      setData(await loadRef.current());
+      const v = await loadRef.current();
+      cacheSet(k, v);
+      if (keyRef.current === k) setDataState(v);
     } catch {
-      setFailed(true);
+      // Якщо є попередні дані — лишаємо їх, помилку показуємо лише коли показати нічого.
+      if (keyRef.current === k && !loadCache.has(k)) setFailed(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -310,7 +341,48 @@ export function formatDate(iso: string, lang: string) {
   }).format(new Date(iso));
 }
 
-export const PHONE_RE = /^(\+?[0-9 ()-]{7,20})?$/;
+/**
+ * Форматує номер під час введення до вигляду «+380 XX XXX XX XX».
+ * Розуміє вставлені 0671234567, 380…, +38 (067)…; зайві цифри відкидає.
+ */
+export function formatPhone(raw: string): string {
+  let d = raw.replace(/\D/g, '');
+  if (d.startsWith('380')) d = d.slice(3);
+  else if (d.length === 11 && d.startsWith('80')) d = d.slice(2);
+  d = d.replace(/^0+/, '').slice(0, 9);
+  if (!d) return raw.trim() === '' ? '' : '+380 ';
+  const parts = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean);
+  return `+380 ${parts.join(' ')}`;
+}
+
+/** Порожньо (без телефону) або повний номер +380 XX XXX XX XX. */
+export function phoneValid(v: string) {
+  const t = v.trim();
+  return t === '' || t === '+380' || /^\+380 \d{2} \d{3} \d{2} \d{2}$/.test(t);
+}
+
+/** Що відправляти на сервер: «+380» без цифр — це порожнє поле. */
+export function phoneValue(v: string) {
+  const t = v.trim();
+  return t === '+380' ? '' : t;
+}
+
+/** Поле телефону з автоформатом +380 XX XXX XX XX. */
+export function PhoneInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
+  return (
+    <input
+      type="tel"
+      inputMode="tel"
+      autoComplete="tel"
+      value={value}
+      autoFocus={autoFocus}
+      placeholder="+380 67 123 45 67"
+      onFocus={() => value === '' && onChange('+380 ')}
+      onBlur={() => phoneValue(value) === '' && onChange('')}
+      onChange={(e) => onChange(formatPhone(e.target.value))}
+    />
+  );
+}
 
 // Повідомлення, які вже показали в цьому запуску застосунку (після перезавантаження — знову).
 const shownNotices = new Set<string>();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Lang, Me } from '../api';
 import { NavContext, type Nav, type Route, type Tab } from '../nav';
@@ -37,11 +37,24 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
   const stack = stacks[tab];
   const route = stack[stack.length - 1]!;
 
+  // Позиція прокрутки кожного екрана (вкладка + глибина): при поверненні — туди ж.
+  const scrolls = useRef(new Map<string, number>());
+  const screenKey = `${tab}:${stack.length}`;
+  const screenKeyRef = useRef(screenKey);
+
   const nav = useMemo<Nav>(
     () => ({
-      push: (r) => setStacks((s) => ({ ...s, [tab]: [...s[tab], r] })),
+      push: (r) =>
+        setStacks((s) => {
+          scrolls.current.delete(`${tab}:${s[tab].length + 1}`);
+          return { ...s, [tab]: [...s[tab], r] };
+        }),
       pop: () => setStacks((s) => ({ ...s, [tab]: s[tab].length > 1 ? s[tab].slice(0, -1) : s[tab] })),
-      replace: (r) => setStacks((s) => ({ ...s, [tab]: [...s[tab].slice(0, -1), r] })),
+      replace: (r) =>
+        setStacks((s) => {
+          scrolls.current.delete(`${tab}:${s[tab].length}`);
+          return { ...s, [tab]: [...s[tab].slice(0, -1), r] };
+        }),
     }),
     [tab],
   );
@@ -52,8 +65,21 @@ export function Shell({ me, onLanguage }: { me: Me; onLanguage: (l: Lang) => voi
     return () => unbind();
   }, [canGoBack, nav]);
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [route]);
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => scrolls.current.set(screenKeyRef.current, window.scrollY));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    screenKeyRef.current = screenKey;
+    window.scrollTo(0, scrolls.current.get(screenKey) ?? 0);
+  }, [screenKey, route]);
 
   function selectTab(next: Tab) {
     if (next === tab) {
